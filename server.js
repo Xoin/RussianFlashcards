@@ -9,13 +9,20 @@ const PORT = 3000;
 const db = new Database();
 const lmStudio = new LMStudioClient();
 
-// Initialize database
-db.init().then(() => {
-  console.log('Database initialized successfully');
-}).catch(err => {
-  console.error('Failed to initialize database:', err);
-  process.exit(1);
-});
+// Initialize database and start server
+async function startServer() {
+  try {
+    await db.init();
+    console.log('Database initialized successfully');
+    
+    server.listen(PORT, () => {
+      console.log(`Server running at http://localhost:${PORT}/`);
+    });
+  } catch (err) {
+    console.error('Failed to initialize database:', err);
+    process.exit(1);
+  }
+}
 
 const server = http.createServer(async (req, res) => {
   const parsedUrl = url.parse(req.url, true);
@@ -171,9 +178,8 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}/`);
-});
+// Start the server
+startServer();
 
 // Graceful shutdown
 process.on('SIGINT', async () => {

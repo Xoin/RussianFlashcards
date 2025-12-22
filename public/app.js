@@ -119,8 +119,18 @@ class FlashcardApp {
     } else if (wordLength === 2) {
       // For 2-letter words, pick either position
       this.blankPosition = Math.floor(Math.random() * 2);
+    } else if (wordLength === 3) {
+      // For 3-letter words, pick middle position more often, but allow edges
+      const rand = Math.random();
+      if (rand < 0.6) {
+        this.blankPosition = 1; // Middle position 60% of the time
+      } else if (rand < 0.8) {
+        this.blankPosition = 0; // First position 20% of the time
+      } else {
+        this.blankPosition = 2; // Last position 20% of the time
+      }
     } else {
-      // For longer words (3+), avoid first and last positions
+      // For longer words (4+), avoid first and last positions
       const minPos = 1;
       const maxPos = wordLength - 1;
       this.blankPosition = Math.floor(Math.random() * (maxPos - minPos)) + minPos;
@@ -156,6 +166,28 @@ class FlashcardApp {
       
       this.elements.wordContainer.appendChild(letterSpan);
     }
+    
+    // Add transliteration below the word
+    const transliteration = this.transliterate(this.currentWord);
+    const translitDiv = document.createElement('div');
+    translitDiv.className = 'transliteration';
+    translitDiv.textContent = `(${transliteration})`;
+    this.elements.wordContainer.appendChild(translitDiv);
+  }
+
+  transliterate(word) {
+    // Russian to Latin transliteration map
+    const map = {
+      'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd',
+      'е': 'e', 'ё': 'yo', 'ж': 'zh', 'з': 'z', 'и': 'i',
+      'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n',
+      'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't',
+      'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch',
+      'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '',
+      'э': 'e', 'ю': 'yu', 'я': 'ya'
+    };
+    
+    return word.toLowerCase().split('').map(char => map[char] || char).join('');
   }
 
   async checkAnswer() {

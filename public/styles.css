@@ -100,6 +100,15 @@ h1 {
     display: inline-block;
 }
 
+.transliteration {
+    display: block;
+    font-size: 0.4em;
+    color: #666;
+    margin-top: 15px;
+    letter-spacing: normal;
+    font-weight: normal;
+}
+
 .letter {
     display: inline-block;
     margin: 0 5px;
