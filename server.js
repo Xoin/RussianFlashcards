@@ -15,6 +15,16 @@ async function startServer() {
     await db.init();
     console.log('Database initialized successfully');
     
+    // Load LM Studio settings from database
+    const settings = await db.getSettings();
+    if (settings.lmstudio) {
+      const host = settings.lmstudio.host || 'localhost';
+      const port = settings.lmstudio.port || 1234;
+      const model = settings.lmstudio.model || null;
+      lmStudio.updateConfig(host, port, model);
+      console.log(`LM Studio configured: ${host}:${port}${model ? ` with model ${model}` : ''}`);
+    }
+    
     server.listen(PORT, () => {
       console.log(`Server running at http://localhost:${PORT}/`);
     });
@@ -363,6 +373,137 @@ const server = http.createServer(async (req, res) => {
         console.error('Error saving settings:', err);
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Failed to save settings' }));
+      }
+    });
+    return;
+  }
+
+  // LM Studio configuration endpoints
+  if (pathname === '/api/lmstudio/test-connection' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        
+        // Validate host and port
+        if (!data.host || typeof data.host !== 'string') {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid host parameter' }));
+          return;
+        }
+        
+        const port = parseInt(data.port);
+        if (isNaN(port) || port < 1 || port > 65535) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid port parameter (must be 1-65535)' }));
+          return;
+        }
+        
+        // Create a temporary client to test the connection
+        const testClient = new LMStudioClient(data.host, port);
+        const result = await testClient.testConnection();
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, ...result }));
+      } catch (err) {
+        console.error('Error testing LM Studio connection:', err);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+          success: false, 
+          connected: false,
+          message: err.message || 'Failed to connect to LM Studio'
+        }));
+      }
+    });
+    return;
+  }
+
+  if (pathname === '/api/lmstudio/models' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        
+        // Validate host and port
+        if (!data.host || typeof data.host !== 'string') {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid host parameter' }));
+          return;
+        }
+        
+        const port = parseInt(data.port);
+        if (isNaN(port) || port < 1 || port > 65535) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid port parameter (must be 1-65535)' }));
+          return;
+        }
+        
+        // Create a temporary client to fetch models
+        const testClient = new LMStudioClient(data.host, port);
+        const models = await testClient.getAvailableModels();
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, models }));
+      } catch (err) {
+        console.error('Error fetching LM Studio models:', err);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+          success: false, 
+          error: err.message || 'Failed to fetch models from LM Studio',
+          models: []
+        }));
+      }
+    });
+    return;
+  }
+
+  if (pathname === '/api/lmstudio/config' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        
+        // Validate configuration
+        if (data.host && typeof data.host !== 'string') {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid host parameter' }));
+          return;
+        }
+        
+        if (data.port !== undefined) {
+          const port = parseInt(data.port);
+          if (isNaN(port) || port < 1 || port > 65535) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Invalid port parameter (must be 1-65535)' }));
+            return;
+          }
+        }
+        
+        // Update LM Studio client configuration
+        const host = data.host || 'localhost';
+        const port = data.port || 1234;
+        const model = data.model || null;
+        
+        lmStudio.updateConfig(host, port, model);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, message: 'LM Studio configuration updated' }));
+      } catch (err) {
+        console.error('Error updating LM Studio configuration:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to update LM Studio configuration' }));
       }
     });
     return;
