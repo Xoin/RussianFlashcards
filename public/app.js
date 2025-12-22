@@ -16,6 +16,10 @@ class FlashcardApp {
     this.answerStartTime = null;
     this.userWasCorrect = false;
     
+    // SRS constants
+    this.MAX_QUALITY_FOR_INCORRECT_ANSWER = 3; // Cap quality at "Hard" if answered incorrectly
+    this.SRS_INITIAL_EASE_FACTOR = 2.5;
+    
     // Exercise type distribution constants
     this.LETTER_FILL_PERCENTAGE = 0.6; // 60%
     this.SENTENCE_COMPLETION_PERCENTAGE = 0.2; // 20%
@@ -1090,6 +1094,21 @@ class FlashcardApp {
   // SRS (Spaced Repetition System) Methods
   // ========================================
 
+  createFallbackSrsItem(letter, word, position) {
+    return {
+      id: Date.now(),
+      letter,
+      word,
+      position,
+      easeFactor: this.SRS_INITIAL_EASE_FACTOR,
+      interval: 0,
+      repetitions: 0,
+      nextReviewDate: new Date().toISOString(),
+      lastReviewDate: null,
+      createdAt: new Date().toISOString()
+    };
+  }
+
   async getOrCreateCurrentSrsItem(positionOverride = null) {
     try {
       const position = positionOverride !== null ? positionOverride : this.blankPosition;
@@ -1130,37 +1149,14 @@ class FlashcardApp {
       }
       
       // Fallback: create a temporary item
-      this.currentSrsItem = {
-        id: Date.now(),
-        letter,
-        word,
-        position,
-        easeFactor: 2.5,
-        interval: 0,
-        repetitions: 0,
-        nextReviewDate: new Date().toISOString(),
-        lastReviewDate: null,
-        createdAt: new Date().toISOString()
-      };
-      
+      this.currentSrsItem = this.createFallbackSrsItem(letter, word, position);
       return this.currentSrsItem;
     } catch (err) {
       console.error('Error getting/creating SRS item:', err);
       
       // Fallback: create a temporary item
-      this.currentSrsItem = {
-        id: Date.now(),
-        letter: this.correctAnswer,
-        word: this.currentWord,
-        position: positionOverride !== null ? positionOverride : this.blankPosition,
-        easeFactor: 2.5,
-        interval: 0,
-        repetitions: 0,
-        nextReviewDate: new Date().toISOString(),
-        lastReviewDate: null,
-        createdAt: new Date().toISOString()
-      };
-      
+      const position = positionOverride !== null ? positionOverride : this.blankPosition;
+      this.currentSrsItem = this.createFallbackSrsItem(this.correctAnswer, this.currentWord, position);
       return this.currentSrsItem;
     }
   }
@@ -1175,8 +1171,8 @@ class FlashcardApp {
       // If the user got it wrong but rates it as "Easy", adjust to "Hard" at most
       // This prevents gaming the system
       let adjustedQuality = quality;
-      if (!this.userWasCorrect && quality > 3) {
-        adjustedQuality = 3; // Cap at "Hard" if answered incorrectly
+      if (!this.userWasCorrect && quality > this.MAX_QUALITY_FOR_INCORRECT_ANSWER) {
+        adjustedQuality = this.MAX_QUALITY_FOR_INCORRECT_ANSWER; // Cap at "Hard" if answered incorrectly
       }
       
       // Calculate response time

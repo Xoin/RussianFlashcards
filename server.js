@@ -216,6 +216,9 @@ const server = http.createServer(async (req, res) => {
           return;
         }
         
+        // Validate quality: Standard SM-2 uses 0-5, but we use 1-5 for clarity
+        // Current UI uses: 1 (Again), 3 (Hard), 4 (Good), 5 (Easy)
+        // API allows 1-5 for flexibility (quality 2 could be added in future)
         if (typeof data.quality !== 'number' || data.quality < 1 || data.quality > 5) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Invalid quality (must be 1-5)' }));

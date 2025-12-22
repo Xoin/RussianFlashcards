@@ -253,6 +253,19 @@ class Database {
   // SM-2 Spaced Repetition System Methods
   // ========================================
 
+  // SM-2 Algorithm Constants
+  static SM2_MINIMUM_EASE_FACTOR = 1.3;
+  static SM2_INITIAL_EASE_FACTOR = 2.5;
+  static SM2_FAILURE_QUALITY_THRESHOLD = 3;
+  static SM2_EASE_FACTOR_DECREASE = 0.2;
+  static SM2_INTERVAL_FIRST_REVIEW = 1;
+  static SM2_INTERVAL_SECOND_REVIEW = 6;
+  static MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+  
+  // SRS Stage Thresholds (in days)
+  static SRS_LEARNING_THRESHOLD = 21;
+  static SRS_YOUNG_THRESHOLD = 60;
+
   /**
    * Calculate next review using SM-2 algorithm
    * @param {number} quality - Quality rating (1-5): 1=Again, 3=Hard, 4=Good, 5=Easy
@@ -262,27 +275,27 @@ class Database {
   calculateSM2(quality, item) {
     // quality: 1-5 (1=Again/forgot, 3=Hard, 4=Good, 5=Easy/perfect)
     
-    if (quality < 3) {
+    if (quality < Database.SM2_FAILURE_QUALITY_THRESHOLD) {
       // Reset on failure (Again or rating below Hard)
       return {
         repetitions: 0,
-        interval: 1,
-        easeFactor: Math.max(1.3, item.easeFactor - 0.2),
-        nextReviewDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString()
+        interval: Database.SM2_INTERVAL_FIRST_REVIEW,
+        easeFactor: Math.max(Database.SM2_MINIMUM_EASE_FACTOR, item.easeFactor - Database.SM2_EASE_FACTOR_DECREASE),
+        nextReviewDate: new Date(Date.now() + Database.SM2_INTERVAL_FIRST_REVIEW * Database.MILLISECONDS_PER_DAY).toISOString()
       };
     }
     
     // Calculate new ease factor
-    const newEF = Math.max(1.3, 
+    const newEF = Math.max(Database.SM2_MINIMUM_EASE_FACTOR, 
       item.easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
     );
     
     // Calculate new interval
     let newInterval;
     if (item.repetitions === 0) {
-      newInterval = 1;
+      newInterval = Database.SM2_INTERVAL_FIRST_REVIEW;
     } else if (item.repetitions === 1) {
-      newInterval = 6;
+      newInterval = Database.SM2_INTERVAL_SECOND_REVIEW;
     } else {
       newInterval = Math.round(item.interval * newEF);
     }
@@ -291,7 +304,7 @@ class Database {
       repetitions: item.repetitions + 1,
       interval: newInterval,
       easeFactor: newEF,
-      nextReviewDate: new Date(Date.now() + newInterval * 24 * 60 * 60 * 1000).toISOString()
+      nextReviewDate: new Date(Date.now() + newInterval * Database.MILLISECONDS_PER_DAY).toISOString()
     };
   }
 
@@ -316,7 +329,7 @@ class Database {
       letter,
       word,
       position,
-      easeFactor: 2.5,
+      easeFactor: Database.SM2_INITIAL_EASE_FACTOR,
       interval: 0,
       repetitions: 0,
       nextReviewDate: new Date().toISOString(),
@@ -393,9 +406,9 @@ class Database {
     this.data.srsItems.forEach(item => {
       if (item.repetitions === 0) {
         stats.new++;
-      } else if (item.interval < 21) {
+      } else if (item.interval < Database.SRS_LEARNING_THRESHOLD) {
         stats.learning++;
-      } else if (item.interval <= 60) {
+      } else if (item.interval <= Database.SRS_YOUNG_THRESHOLD) {
         stats.young++;
       } else {
         stats.mature++;
