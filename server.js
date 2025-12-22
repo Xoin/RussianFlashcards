@@ -210,6 +210,97 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Get sentences for a specific word
+  if (pathname.startsWith('/api/word/') && pathname.includes('/sentences') && req.method === 'GET') {
+    try {
+      const word = decodeURIComponent(pathname.split('/')[3]);
+      
+      // Validate word parameter - only allow Cyrillic letters
+      if (!/^[а-яА-ЯёЁ]+$/.test(word)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid word parameter' }));
+        return;
+      }
+      
+      const sentences = await db.getSentencesByWord(word);
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ word, sentences }));
+    } catch (err) {
+      console.error('Error fetching sentences:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to fetch sentences' }));
+    }
+    return;
+  }
+
+  // Get definition for a specific word
+  if (pathname.startsWith('/api/word/') && pathname.includes('/definition') && req.method === 'GET') {
+    try {
+      const word = decodeURIComponent(pathname.split('/')[3]);
+      
+      // Validate word parameter - only allow Cyrillic letters
+      if (!/^[а-яА-ЯёЁ]+$/.test(word)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid word parameter' }));
+        return;
+      }
+      
+      const definition = await db.getWordDefinition(word);
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ word, definition }));
+    } catch (err) {
+      console.error('Error fetching definition:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to fetch definition' }));
+    }
+    return;
+  }
+
+  // Generate a contextual sentence using LM Studio
+  if (pathname === '/api/generate-sentence' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        
+        // Validate word parameter - must be string with only Cyrillic letters
+        if (!data.word || typeof data.word !== 'string' || !/^[а-яА-ЯёЁ]+$/.test(data.word)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid word parameter' }));
+          return;
+        }
+        
+        const difficulty = data.difficulty || 'beginner';
+        const result = await lmStudio.generateContextualSentence(data.word, difficulty);
+        
+        if (!result) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Failed to generate sentence' }));
+          return;
+        }
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          word: data.word,
+          sentence: result.sentence,
+          translation: result.translation,
+          targetPosition: result.targetPosition
+        }));
+      } catch (err) {
+        console.error('Error generating sentence:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to generate sentence' }));
+      }
+    });
+    return;
+  }
+
   // Static file serving
   let filePath = pathname === '/' 
     ? './public/index.html' 

@@ -8,6 +8,17 @@ class FlashcardApp {
     this.sessionCorrect = 0;
     this.sessionIncorrect = 0;
     this.wrongLettersThisWord = new Set(); // Track wrong letters for current word
+    this.currentExerciseType = 'letter-fill'; // 'letter-fill' or 'sentence-completion'
+    this.currentSentence = null;
+    
+    // Exercise type distribution constants
+    this.LETTER_FILL_PERCENTAGE = 0.6; // 60%
+    this.SENTENCE_COMPLETION_PERCENTAGE = 0.2; // 20%
+    // Remaining 20% reserved for future exercise types
+    
+    // Timing constants for exercise transitions
+    this.CORRECT_ANSWER_DELAY = 3000; // 3 seconds
+    this.WRONG_ANSWER_DELAY = 4000; // 4 seconds
     
     // Audio settings
     this.audioSettings = {
@@ -55,7 +66,33 @@ class FlashcardApp {
       audioRate: document.getElementById('audio-rate'),
       rateValue: document.getElementById('rate-value'),
       audioVoice: document.getElementById('audio-voice'),
-      testAudioBtn: document.getElementById('test-audio-btn')
+      testAudioBtn: document.getElementById('test-audio-btn'),
+      // Context panel elements
+      contextPanel: document.getElementById('context-panel'),
+      contextWord: document.getElementById('context-word'),
+      contextTranslation: document.getElementById('context-translation'),
+      exampleSentences: document.getElementById('example-sentences'),
+      showMoreBtn: document.getElementById('show-more-btn'),
+      // Sentence exercise elements
+      sentenceExercise: document.getElementById('sentence-exercise'),
+      sentencePrompt: document.getElementById('sentence-prompt'),
+      sentenceTranslation: document.getElementById('sentence-translation'),
+      sentenceInput: document.getElementById('sentence-input'),
+      sentenceSubmitBtn: document.getElementById('sentence-submit-btn'),
+      sentenceHintBtn: document.getElementById('sentence-hint-btn'),
+      sentenceFeedback: document.getElementById('sentence-feedback'),
+      sentenceContextPanel: document.getElementById('sentence-context-panel'),
+      sentenceContextWord: document.getElementById('sentence-context-word'),
+      sentenceContextTranslation: document.getElementById('sentence-context-translation'),
+      sentenceExampleSentences: document.getElementById('sentence-example-sentences'),
+      // Modal elements
+      modalOverlay: document.getElementById('modal-overlay'),
+      wordDetailsModal: document.getElementById('word-details-modal'),
+      modalWord: document.getElementById('modal-word'),
+      modalTranslation: document.getElementById('modal-translation'),
+      modalPos: document.getElementById('modal-pos'),
+      modalSentenceList: document.getElementById('modal-sentence-list'),
+      closeModalBtn: document.getElementById('close-modal-btn')
     };
     
     this.russianLetters = [
@@ -132,6 +169,24 @@ class FlashcardApp {
       this.speakWord('привет');
     });
     
+    // Sentence exercise event listeners
+    this.elements.sentenceSubmitBtn.addEventListener('click', () => this.checkSentenceAnswer());
+    this.elements.sentenceHintBtn.addEventListener('click', () => this.showSentenceHint());
+    
+    this.elements.sentenceInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        this.checkSentenceAnswer();
+      }
+    });
+    
+    // Modal event listeners
+    this.elements.closeModalBtn.addEventListener('click', () => this.closeModal());
+    this.elements.modalOverlay.addEventListener('click', () => this.closeModal());
+    
+    this.elements.showMoreBtn.addEventListener('click', () => {
+      this.showWordDetails(this.currentWord);
+    });
+    
     // Initialize keyboard
     this.initKeyboard();
   }
@@ -199,6 +254,7 @@ class FlashcardApp {
   showFlashcard() {
     this.elements.loading.style.display = 'none';
     this.elements.flashcard.style.display = 'block';
+    this.elements.sentenceExercise.style.display = 'none';
     this.elements.lessonComplete.style.display = 'none';
     this.elements.letterInput.focus();
   }
@@ -228,6 +284,26 @@ class FlashcardApp {
 
     this.currentWord = this.currentLesson.words[this.currentWordIndex];
     
+    // Decide exercise type based on distribution percentages
+    const rand = Math.random();
+    const sentenceThreshold = this.LETTER_FILL_PERCENTAGE + this.SENTENCE_COMPLETION_PERCENTAGE;
+    
+    if (rand < this.LETTER_FILL_PERCENTAGE) {
+      // Letter fill-in exercise
+      this.currentExerciseType = 'letter-fill';
+      this.showLetterFillExercise();
+    } else if (rand < sentenceThreshold) {
+      // Sentence completion exercise
+      this.currentExerciseType = 'sentence-completion';
+      this.loadAndShowSentenceExercise();
+    } else {
+      // For now, fall back to letter-fill for the remaining percentage
+      this.currentExerciseType = 'letter-fill';
+      this.showLetterFillExercise();
+    }
+  }
+
+  showLetterFillExercise() {
     // Choose a random position to blank out
     const wordLength = this.currentWord.length;
     if (wordLength === 1) {
@@ -264,6 +340,7 @@ class FlashcardApp {
     this.elements.letterInput.disabled = false;
     this.elements.submitBtn.disabled = false;
     this.elements.hintBtn.disabled = false;
+    this.elements.contextPanel.style.display = 'none';
     
     this.updateStats();
     this.updateKeyboard();
@@ -274,6 +351,66 @@ class FlashcardApp {
       // Small delay to ensure the word is rendered and user can focus on listening
       const AUTOPLAY_DELAY_MS = 300;
       setTimeout(() => this.speakWord(this.currentWord), AUTOPLAY_DELAY_MS);
+    }
+  }
+
+  async loadAndShowSentenceExercise() {
+    try {
+      // Try to get a sentence for the current word
+      const response = await fetch(`/api/word/${encodeURIComponent(this.currentWord)}/sentences`);
+      const data = await response.json();
+      
+      if (data.sentences && data.sentences.length > 0) {
+        // Pick a random sentence
+        this.currentSentence = data.sentences[Math.floor(Math.random() * data.sentences.length)];
+        this.showSentenceCompletion();
+      } else {
+        // No sentences available, fall back to letter-fill
+        this.currentExerciseType = 'letter-fill';
+        this.showLetterFillExercise();
+      }
+    } catch (err) {
+      console.error('Error loading sentence:', err);
+      // Fall back to letter-fill exercise
+      this.currentExerciseType = 'letter-fill';
+      this.showLetterFillExercise();
+    }
+  }
+
+  showSentenceCompletion() {
+    if (!this.currentSentence) {
+      this.showLetterFillExercise();
+      return;
+    }
+
+    // Create sentence with blank
+    const words = this.currentSentence.sentence.split(' ');
+    words[this.currentSentence.targetPosition] = '____';
+    const sentenceWithBlank = words.join(' ');
+    
+    this.elements.sentencePrompt.textContent = sentenceWithBlank;
+    this.elements.sentenceTranslation.textContent = this.currentSentence.translation;
+    this.elements.sentenceInput.value = '';
+    this.elements.sentenceInput.disabled = false;
+    this.elements.sentenceSubmitBtn.disabled = false;
+    this.elements.sentenceHintBtn.disabled = false;
+    this.elements.sentenceFeedback.textContent = '';
+    this.elements.sentenceFeedback.className = 'feedback';
+    this.elements.sentenceContextPanel.style.display = 'none';
+    
+    this.updateStats();
+    
+    // Show sentence exercise, hide letter fill
+    this.elements.loading.style.display = 'none';
+    this.elements.flashcard.style.display = 'none';
+    this.elements.lessonComplete.style.display = 'none';
+    this.elements.sentenceExercise.style.display = 'block';
+    this.elements.sentenceInput.focus();
+    
+    // Autoplay audio if enabled
+    if (this.audioSettings.autoplay && this.audioSettings.enabled) {
+      const AUTOPLAY_DELAY_MS = 300;
+      setTimeout(() => this.speakWord(this.currentSentence.sentence), AUTOPLAY_DELAY_MS);
     }
   }
 
@@ -352,10 +489,13 @@ class FlashcardApp {
       this.showFeedback('Correct! ✓', true);
       this.revealLetter(true);
       
+      // Show context panel
+      await this.showContextPanel(this.currentWord);
+      
       setTimeout(() => {
         this.currentWordIndex++;
         this.showNextWord();
-      }, 1500);
+      }, this.CORRECT_ANSWER_DELAY);
     } else {
       this.sessionIncorrect++;
       
@@ -369,13 +509,198 @@ class FlashcardApp {
       // Record the mistake
       await this.recordMistake(this.correctAnswer, this.currentWord, this.blankPosition);
       
+      // Show context panel
+      await this.showContextPanel(this.currentWord);
+      
       setTimeout(() => {
         this.currentWordIndex++;
         this.showNextWord();
-      }, 2500);
+      }, this.WRONG_ANSWER_DELAY);
     }
 
     this.updateStats();
+  }
+
+  async checkSentenceAnswer() {
+    const userAnswer = this.elements.sentenceInput.value.toLowerCase().trim();
+    
+    if (!userAnswer) {
+      this.showSentenceFeedback('Please enter a word', false);
+      return;
+    }
+
+    this.elements.sentenceInput.disabled = true;
+    this.elements.sentenceSubmitBtn.disabled = true;
+    this.elements.sentenceHintBtn.disabled = true;
+
+    const correctAnswer = this.currentWord.toLowerCase();
+
+    if (userAnswer === correctAnswer) {
+      this.sessionCorrect++;
+      this.showSentenceFeedback('Correct! ✓', true);
+      
+      // Show the complete sentence
+      this.elements.sentencePrompt.textContent = this.currentSentence.sentence;
+      
+      // Show context panel
+      await this.showSentenceContextPanel(this.currentWord);
+      
+      setTimeout(() => {
+        this.currentWordIndex++;
+        this.showNextWord();
+      }, this.CORRECT_ANSWER_DELAY);
+    } else {
+      this.sessionIncorrect++;
+      
+      this.showSentenceFeedback(`Wrong. The correct word is: ${this.currentWord}`, false);
+      
+      // Show the complete sentence
+      this.elements.sentencePrompt.textContent = this.currentSentence.sentence;
+      
+      // Show context panel
+      await this.showSentenceContextPanel(this.currentWord);
+      
+      setTimeout(() => {
+        this.currentWordIndex++;
+        this.showNextWord();
+      }, this.WRONG_ANSWER_DELAY);
+    }
+
+    this.updateStats();
+  }
+
+  async showContextPanel(word) {
+    try {
+      // Fetch word definition and sentences
+      const [defResponse, sentResponse] = await Promise.all([
+        fetch(`/api/word/${encodeURIComponent(word)}/definition`),
+        fetch(`/api/word/${encodeURIComponent(word)}/sentences`)
+      ]);
+      
+      const defData = await defResponse.json();
+      const sentData = await sentResponse.json();
+      
+      // Update context panel
+      this.elements.contextWord.textContent = word;
+      
+      if (defData.definition) {
+        const translation = this.formatWordInfo(defData.definition);
+        this.elements.contextTranslation.textContent = translation;
+      } else {
+        this.elements.contextTranslation.textContent = 'No translation available';
+      }
+      
+      // Show example sentences
+      this.elements.exampleSentences.innerHTML = '';
+      if (sentData.sentences && sentData.sentences.length > 0) {
+        // Show first sentence
+        const sentence = sentData.sentences[0];
+        const sentenceDiv = document.createElement('div');
+        sentenceDiv.className = 'example-sentence';
+        sentenceDiv.innerHTML = `
+          <p class="russian">${sentence.sentence}</p>
+          <p class="english">${sentence.translation}</p>
+        `;
+        this.elements.exampleSentences.appendChild(sentenceDiv);
+        
+        // Show "show more" button if there are more sentences
+        if (sentData.sentences.length > 1) {
+          this.elements.showMoreBtn.style.display = 'block';
+        } else {
+          this.elements.showMoreBtn.style.display = 'none';
+        }
+      } else {
+        this.elements.exampleSentences.innerHTML = '<p style="color: #666;">No example sentences available.</p>';
+        this.elements.showMoreBtn.style.display = 'none';
+      }
+      
+      this.elements.contextPanel.style.display = 'block';
+    } catch (err) {
+      console.error('Error showing context:', err);
+    }
+  }
+
+  async showSentenceContextPanel(word) {
+    try {
+      // Fetch word definition and sentences
+      const [defResponse, sentResponse] = await Promise.all([
+        fetch(`/api/word/${encodeURIComponent(word)}/definition`),
+        fetch(`/api/word/${encodeURIComponent(word)}/sentences`)
+      ]);
+      
+      const defData = await defResponse.json();
+      const sentData = await sentResponse.json();
+      
+      // Update context panel
+      this.elements.sentenceContextWord.textContent = word;
+      
+      if (defData.definition) {
+        const translation = this.formatWordInfo(defData.definition);
+        this.elements.sentenceContextTranslation.textContent = translation;
+      } else {
+        this.elements.sentenceContextTranslation.textContent = 'No translation available';
+      }
+      
+      // Show example sentences (other than the current one)
+      this.elements.sentenceExampleSentences.innerHTML = '';
+      if (sentData.sentences && sentData.sentences.length > 1) {
+        const otherSentences = sentData.sentences.filter(s => {
+          // Compare sentences ignoring whitespace differences
+          const currentSentence = this.currentSentence.sentence.trim().replace(/\s+/g, ' ');
+          const otherSentence = s.sentence.trim().replace(/\s+/g, ' ');
+          return otherSentence !== currentSentence;
+        });
+        if (otherSentences.length > 0) {
+          const sentence = otherSentences[0];
+          const sentenceDiv = document.createElement('div');
+          sentenceDiv.className = 'example-sentence';
+          sentenceDiv.innerHTML = `
+            <p class="russian">${sentence.sentence}</p>
+            <p class="english">${sentence.translation}</p>
+          `;
+          this.elements.sentenceExampleSentences.appendChild(sentenceDiv);
+        }
+      }
+      
+      this.elements.sentenceContextPanel.style.display = 'block';
+    } catch (err) {
+      console.error('Error showing sentence context:', err);
+    }
+  }
+
+  formatWordInfo(definition) {
+    // Format: "translation (gender part-of-speech)" or "translation (part-of-speech)"
+    let info = definition.translation;
+    const parts = [];
+    
+    if (definition.gender) {
+      parts.push(definition.gender);
+    }
+    if (definition.partOfSpeech) {
+      parts.push(definition.partOfSpeech);
+    }
+    
+    if (parts.length > 0) {
+      info += ` (${parts.join(' ')})`;
+    }
+    
+    return info;
+  }
+
+  showSentenceFeedback(message, isCorrect) {
+    this.elements.sentenceFeedback.textContent = message;
+    if (isCorrect === true) {
+      this.elements.sentenceFeedback.className = 'feedback success';
+    } else if (isCorrect === false) {
+      this.elements.sentenceFeedback.className = 'feedback error';
+    } else {
+      this.elements.sentenceFeedback.className = 'feedback';
+    }
+  }
+
+  showSentenceHint() {
+    const hint = `The word starts with "${this.currentWord[0]}" and has ${this.currentWord.length} letters`;
+    this.showSentenceFeedback(hint, null);
   }
 
   revealLetter(correct) {
@@ -644,6 +969,60 @@ class FlashcardApp {
     } catch (err) {
       console.error('Error saving settings:', err);
     }
+  }
+
+  async showWordDetails(word) {
+    try {
+      // Fetch word definition and all sentences
+      const [defResponse, sentResponse] = await Promise.all([
+        fetch(`/api/word/${encodeURIComponent(word)}/definition`),
+        fetch(`/api/word/${encodeURIComponent(word)}/sentences`)
+      ]);
+      
+      const defData = await defResponse.json();
+      const sentData = await sentResponse.json();
+      
+      // Update modal content
+      this.elements.modalWord.textContent = word;
+      
+      if (defData.definition) {
+        this.elements.modalTranslation.textContent = defData.definition.translation;
+        let posText = defData.definition.partOfSpeech || '';
+        if (defData.definition.gender) {
+          posText = `${defData.definition.gender} ${posText}`.trim();
+        }
+        this.elements.modalPos.textContent = posText;
+      } else {
+        this.elements.modalTranslation.textContent = 'No translation available';
+        this.elements.modalPos.textContent = '';
+      }
+      
+      // Show all example sentences
+      this.elements.modalSentenceList.innerHTML = '';
+      if (sentData.sentences && sentData.sentences.length > 0) {
+        sentData.sentences.forEach(sentence => {
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <p class="ru">${sentence.sentence}</p>
+            <p class="en">${sentence.translation}</p>
+          `;
+          this.elements.modalSentenceList.appendChild(li);
+        });
+      } else {
+        this.elements.modalSentenceList.innerHTML = '<li><p class="ru">No example sentences available.</p></li>';
+      }
+      
+      // Show modal
+      this.elements.modalOverlay.classList.add('show');
+      this.elements.wordDetailsModal.classList.add('show');
+    } catch (err) {
+      console.error('Error showing word details:', err);
+    }
+  }
+
+  closeModal() {
+    this.elements.modalOverlay.classList.remove('show');
+    this.elements.wordDetailsModal.classList.remove('show');
   }
 }
 
