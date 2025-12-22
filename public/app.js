@@ -11,6 +11,10 @@ class FlashcardApp {
     this.currentExerciseType = 'letter-fill'; // 'letter-fill' or 'sentence-completion'
     this.currentSentence = null;
     
+    // Timing constants for exercise transitions
+    this.CORRECT_ANSWER_DELAY = 3000; // 3 seconds
+    this.WRONG_ANSWER_DELAY = 4000; // 4 seconds
+    
     // Audio settings
     this.audioSettings = {
       enabled: true,
@@ -484,7 +488,7 @@ class FlashcardApp {
       setTimeout(() => {
         this.currentWordIndex++;
         this.showNextWord();
-      }, 3000);
+      }, this.CORRECT_ANSWER_DELAY);
     } else {
       this.sessionIncorrect++;
       
@@ -504,7 +508,7 @@ class FlashcardApp {
       setTimeout(() => {
         this.currentWordIndex++;
         this.showNextWord();
-      }, 4000);
+      }, this.WRONG_ANSWER_DELAY);
     }
 
     this.updateStats();
@@ -537,7 +541,7 @@ class FlashcardApp {
       setTimeout(() => {
         this.currentWordIndex++;
         this.showNextWord();
-      }, 3000);
+      }, this.CORRECT_ANSWER_DELAY);
     } else {
       this.sessionIncorrect++;
       
@@ -552,7 +556,7 @@ class FlashcardApp {
       setTimeout(() => {
         this.currentWordIndex++;
         this.showNextWord();
-      }, 4000);
+      }, this.WRONG_ANSWER_DELAY);
     }
 
     this.updateStats();
@@ -573,10 +577,7 @@ class FlashcardApp {
       this.elements.contextWord.textContent = word;
       
       if (defData.definition) {
-        let translation = defData.definition.translation;
-        if (defData.definition.partOfSpeech) {
-          translation += ` (${defData.definition.gender || defData.definition.partOfSpeech})`;
-        }
+        const translation = this.formatWordInfo(defData.definition);
         this.elements.contextTranslation.textContent = translation;
       } else {
         this.elements.contextTranslation.textContent = 'No translation available';
@@ -627,10 +628,7 @@ class FlashcardApp {
       this.elements.sentenceContextWord.textContent = word;
       
       if (defData.definition) {
-        let translation = defData.definition.translation;
-        if (defData.definition.partOfSpeech) {
-          translation += ` (${defData.definition.gender || defData.definition.partOfSpeech})`;
-        }
+        const translation = this.formatWordInfo(defData.definition);
         this.elements.sentenceContextTranslation.textContent = translation;
       } else {
         this.elements.sentenceContextTranslation.textContent = 'No translation available';
@@ -656,6 +654,25 @@ class FlashcardApp {
     } catch (err) {
       console.error('Error showing sentence context:', err);
     }
+  }
+
+  formatWordInfo(definition) {
+    // Format: "translation (gender part-of-speech)" or "translation (part-of-speech)"
+    let info = definition.translation;
+    const parts = [];
+    
+    if (definition.gender) {
+      parts.push(definition.gender);
+    }
+    if (definition.partOfSpeech) {
+      parts.push(definition.partOfSpeech);
+    }
+    
+    if (parts.length > 0) {
+      info += ` (${parts.join(' ')})`;
+    }
+    
+    return info;
   }
 
   showSentenceFeedback(message, isCorrect) {

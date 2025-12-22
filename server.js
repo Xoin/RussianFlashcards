@@ -214,6 +214,14 @@ const server = http.createServer(async (req, res) => {
   if (pathname.startsWith('/api/word/') && pathname.includes('/sentences') && req.method === 'GET') {
     try {
       const word = decodeURIComponent(pathname.split('/')[3]);
+      
+      // Validate word parameter - only allow Cyrillic letters
+      if (!/^[а-яА-ЯёЁ]+$/.test(word)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid word parameter' }));
+        return;
+      }
+      
       const sentences = await db.getSentencesByWord(word);
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -230,6 +238,14 @@ const server = http.createServer(async (req, res) => {
   if (pathname.startsWith('/api/word/') && pathname.includes('/definition') && req.method === 'GET') {
     try {
       const word = decodeURIComponent(pathname.split('/')[3]);
+      
+      // Validate word parameter - only allow Cyrillic letters
+      if (!/^[а-яА-ЯёЁ]+$/.test(word)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid word parameter' }));
+        return;
+      }
+      
       const definition = await db.getWordDefinition(word);
       
       res.writeHead(200, { 'Content-Type': 'application/json' });

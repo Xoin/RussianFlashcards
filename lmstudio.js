@@ -189,11 +189,14 @@ English: [translation]`;
         return null;
       }
       
-      // Find target word position in sentence
-      const words = russian.toLowerCase().split(' ');
-      const targetPosition = words.findIndex(w => 
-        w.includes(word.toLowerCase()) || word.toLowerCase().includes(w)
-      );
+      // Find target word position in sentence - look for exact word match
+      const words = russian.split(' ');
+      const targetWord = word.toLowerCase();
+      const targetPosition = words.findIndex(w => {
+        // Remove punctuation and compare
+        const cleanWord = w.toLowerCase().replace(/[.,!?;:]/g, '');
+        return cleanWord === targetWord;
+      });
       
       if (targetPosition === -1) {
         return null;
