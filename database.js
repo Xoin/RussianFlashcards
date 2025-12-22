@@ -7,6 +7,7 @@ class Database {
     this.data = {
       letterMistakes: [],
       userProgress: [],
+      settings: {},
       nextMistakeId: 1,
       nextProgressId: 1
     };
@@ -30,6 +31,10 @@ class Database {
           this.data.nextProgressId = idsWithValues.length > 0
             ? Math.max(...idsWithValues) + 1
             : 1;
+        }
+        // Ensure settings exist for backwards compatibility
+        if (!this.data.settings) {
+          this.data.settings = {};
         }
       } else {
         await this.save();
@@ -115,6 +120,15 @@ class Database {
       acc.incorrect += session.incorrectAnswers;
       return acc;
     }, { total: 0, correct: 0, incorrect: 0 });
+  }
+
+  async getSettings() {
+    return this.data.settings || {};
+  }
+
+  async saveSettings(settings) {
+    this.data.settings = settings;
+    await this.save();
   }
 
   async close() {

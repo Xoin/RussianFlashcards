@@ -5,10 +5,25 @@ A flashcard application for learning Russian letters and simple words with intel
 ## Features
 
 - **Letter Fill-in Exercises**: Practice Russian letters by filling in missing letters in simple words
+- **Audio Pronunciation**: Listen to Russian word pronunciation with text-to-speech support
 - **Progress Tracking**: Automatically tracks which letters you struggle with most
 - **Adaptive Lesson Length**: Lessons get shorter when you make many errors, longer when you're doing well
 - **LM Studio Integration**: Optionally uses LM Studio to generate contextual words and lessons
 - **No External Dependencies**: Built using only Node.js built-in modules
+
+### Audio Features
+
+The application includes built-in audio pronunciation support to help you learn Russian word pronunciation:
+
+- **🔊 Audio Button**: Click the speaker icon next to any Russian word to hear its pronunciation
+- **Keyboard Shortcut**: Press the Space bar to play audio pronunciation of the current word
+- **Customizable Settings**:
+  - Enable/disable audio
+  - Autoplay pronunciation on new words
+  - Adjust speech rate (0.5x - 2.0x)
+  - Select from available Russian voices
+- **Browser Compatibility**: Uses the Web Speech API, supported by Chrome, Firefox, Safari, and Edge
+- **Graceful Degradation**: Works even if Russian voices aren't available (falls back to default voice)
 
 ## Prerequisites
 
@@ -52,13 +67,28 @@ If LM Studio is not available, the application will use a built-in set of Russia
 ## How It Works
 
 1. **Practice**: Fill in missing letters in Russian words
-2. **Tracking**: Every mistake is recorded and tracked
-3. **Adaptation**: The system focuses on letters you find challenging
-4. **Progressive Learning**: 
+2. **Listen**: Click the 🔊 button to hear Russian pronunciation
+3. **Tracking**: Every mistake is recorded and tracked
+4. **Adaptation**: The system focuses on letters you find challenging
+5. **Progressive Learning**: 
    - High error rate (>50%): 5 words per lesson
    - Medium error rate (30-50%): 7 words per lesson
    - Low error rate (15-30%): 10 words per lesson
    - Very low error rate (<15%): 12 words per lesson
+
+### Using Audio Features
+
+To access audio settings:
+1. Click the **⚙️ Settings** button in the top-right corner
+2. Adjust audio preferences:
+   - Toggle "Enable Audio" on/off
+   - Enable "Autoplay on New Word" for automatic pronunciation
+   - Adjust speech rate using the slider (slower for beginners, faster for advanced learners)
+   - Select your preferred Russian voice (if multiple are available)
+3. Click "Test Audio" to preview your settings
+
+**Keyboard Shortcuts:**
+- Press **Space** to play audio for the current word
 
 ## Data Storage
 

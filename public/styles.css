@@ -26,6 +26,73 @@ header {
     margin-bottom: 30px;
     padding-bottom: 20px;
     border-bottom: 2px solid #f0f0f0;
+    position: relative;
+}
+
+.settings-toggle-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 15px;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.settings-toggle-btn:hover {
+    background: #5568d3;
+    transform: translateY(-2px);
+}
+
+.settings-panel {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 2px solid #667eea;
+}
+
+.settings-panel h3 {
+    color: #667eea;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.setting-item {
+    margin: 15px 0;
+}
+
+.setting-item label {
+    display: block;
+    color: #555;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.setting-item input[type="checkbox"] {
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+.setting-item input[type="range"] {
+    width: 100%;
+    cursor: pointer;
+}
+
+.setting-item select {
+    width: 100%;
+    padding: 8px;
+    border: 2px solid #667eea;
+    border-radius: 5px;
+    font-size: 1em;
+}
+
+.setting-item button {
+    width: 100%;
 }
 
 h1 {
@@ -98,6 +165,46 @@ h1 {
 
 #word-container {
     display: inline-block;
+}
+
+.word-wrapper {
+    display: inline-block;
+}
+
+.audio-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    margin-left: 0.5rem;
+    transition: transform 0.2s;
+    padding: 0.3rem;
+    vertical-align: middle;
+    opacity: 0.7;
+}
+
+.audio-btn:hover {
+    transform: scale(1.2);
+    opacity: 1;
+}
+
+.audio-btn:active {
+    transform: scale(0.9);
+}
+
+.audio-btn.playing {
+    animation: pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+    from {
+        transform: scale(1);
+        opacity: 0.7;
+    }
+    to {
+        transform: scale(1.15);
+        opacity: 1;
+    }
 }
 
 .transliteration {

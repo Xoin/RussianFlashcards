@@ -136,6 +136,80 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (pathname === '/api/settings' && req.method === 'GET') {
+    try {
+      const settings = await db.getSettings();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(settings));
+    } catch (err) {
+      console.error('Error fetching settings:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to fetch settings' }));
+    }
+    return;
+  }
+
+  if (pathname === '/api/settings' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        
+        // Validate settings structure
+        if (data.audio && typeof data.audio === 'object') {
+          // Validate audio settings
+          if (data.audio.enabled !== undefined && typeof data.audio.enabled !== 'boolean') {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Invalid enabled value' }));
+            return;
+          }
+          if (data.audio.autoplay !== undefined && typeof data.audio.autoplay !== 'boolean') {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Invalid autoplay value' }));
+            return;
+          }
+          if (data.audio.rate !== undefined) {
+            const rate = parseFloat(data.audio.rate);
+            if (isNaN(rate) || rate < 0.5 || rate > 2.0) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Invalid rate value (must be 0.5-2.0)' }));
+              return;
+            }
+          }
+          if (data.audio.voiceIndex !== undefined) {
+            const voiceIndex = parseInt(data.audio.voiceIndex);
+            if (isNaN(voiceIndex) || voiceIndex < 0) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Invalid voiceIndex value' }));
+              return;
+            }
+          }
+          if (data.audio.volume !== undefined) {
+            const volume = parseFloat(data.audio.volume);
+            if (isNaN(volume) || volume < 0 || volume > 1) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Invalid volume value (must be 0-1)' }));
+              return;
+            }
+          }
+        }
+        
+        await db.saveSettings(data);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (err) {
+        console.error('Error saving settings:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to save settings' }));
+      }
+    });
+    return;
+  }
+
   // Static file serving
   let filePath = pathname === '/' 
     ? './public/index.html' 
