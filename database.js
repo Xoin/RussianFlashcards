@@ -51,13 +51,13 @@ class Database {
         if (!this.data.nextSentenceId) {
           const idsWithValues = this.data.sentences.filter(s => s.id).map(s => s.id);
           this.data.nextSentenceId = idsWithValues.length > 0
-            ? Math.max(...idsWithValues) + 1
+            ? idsWithValues.reduce((max, id) => id > max ? id : max, 0) + 1
             : 1;
         }
         if (!this.data.nextDefinitionId) {
           const idsWithValues = this.data.wordDefinitions.filter(d => d.id).map(d => d.id);
           this.data.nextDefinitionId = idsWithValues.length > 0
-            ? Math.max(...idsWithValues) + 1
+            ? idsWithValues.reduce((max, id) => id > max ? id : max, 0) + 1
             : 1;
         }
       } else {

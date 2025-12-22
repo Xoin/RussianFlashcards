@@ -269,7 +269,8 @@ const server = http.createServer(async (req, res) => {
       try {
         const data = JSON.parse(body);
         
-        if (!data.word || typeof data.word !== 'string') {
+        // Validate word parameter - must be string with only Cyrillic letters
+        if (!data.word || typeof data.word !== 'string' || !/^[а-яА-ЯёЁ]+$/.test(data.word)) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Invalid word parameter' }));
           return;

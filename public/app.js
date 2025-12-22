@@ -11,6 +11,11 @@ class FlashcardApp {
     this.currentExerciseType = 'letter-fill'; // 'letter-fill' or 'sentence-completion'
     this.currentSentence = null;
     
+    // Exercise type distribution constants
+    this.LETTER_FILL_PERCENTAGE = 0.6; // 60%
+    this.SENTENCE_COMPLETION_PERCENTAGE = 0.2; // 20%
+    // Remaining 20% reserved for future exercise types
+    
     // Timing constants for exercise transitions
     this.CORRECT_ANSWER_DELAY = 3000; // 3 seconds
     this.WRONG_ANSWER_DELAY = 4000; // 4 seconds
@@ -279,18 +284,20 @@ class FlashcardApp {
 
     this.currentWord = this.currentLesson.words[this.currentWordIndex];
     
-    // Decide exercise type: 60% letter-fill, 20% sentence completion, 20% future
+    // Decide exercise type based on distribution percentages
     const rand = Math.random();
-    if (rand < 0.6) {
+    const sentenceThreshold = this.LETTER_FILL_PERCENTAGE + this.SENTENCE_COMPLETION_PERCENTAGE;
+    
+    if (rand < this.LETTER_FILL_PERCENTAGE) {
       // Letter fill-in exercise
       this.currentExerciseType = 'letter-fill';
       this.showLetterFillExercise();
-    } else if (rand < 0.8) {
+    } else if (rand < sentenceThreshold) {
       // Sentence completion exercise
       this.currentExerciseType = 'sentence-completion';
       this.loadAndShowSentenceExercise();
     } else {
-      // For now, fall back to letter-fill for the remaining 20%
+      // For now, fall back to letter-fill for the remaining percentage
       this.currentExerciseType = 'letter-fill';
       this.showLetterFillExercise();
     }
@@ -637,7 +644,12 @@ class FlashcardApp {
       // Show example sentences (other than the current one)
       this.elements.sentenceExampleSentences.innerHTML = '';
       if (sentData.sentences && sentData.sentences.length > 1) {
-        const otherSentences = sentData.sentences.filter(s => s.sentence !== this.currentSentence.sentence);
+        const otherSentences = sentData.sentences.filter(s => {
+          // Compare sentences ignoring whitespace differences
+          const currentSentence = this.currentSentence.sentence.trim().replace(/\s+/g, ' ');
+          const otherSentence = s.sentence.trim().replace(/\s+/g, ' ');
+          return otherSentence !== currentSentence;
+        });
         if (otherSentences.length > 0) {
           const sentence = otherSentences[0];
           const sentenceDiv = document.createElement('div');
