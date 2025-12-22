@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russian Letter Flashcards</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Russian Letter Flashcards</h1>
+            <p class="subtitle">Learn Russian letters and simple words</p>
+        </header>
+
+        <div class="stats-bar">
+            <div class="stat">
+                <span class="stat-label">Progress:</span>
+                <span id="progress-text">0/0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Correct:</span>
+                <span id="correct-count" class="correct">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Errors:</span>
+                <span id="error-count" class="error">0</span>
+            </div>
+        </div>
+
+        <div id="lesson-container">
+            <div id="loading" class="loading">
+                <p>Loading lesson...</p>
+            </div>
+
+            <div id="flashcard" class="flashcard" style="display: none;">
+                <div class="word-display">
+                    <div id="word-container"></div>
+                </div>
+
+                <div class="input-section">
+                    <label for="letter-input">Fill in the missing letter:</label>
+                    <input 
+                        type="text" 
+                        id="letter-input" 
+                        maxlength="1" 
+                        autocomplete="off"
+                        autofocus
+                    >
+                    <button id="submit-btn" class="btn btn-primary">Submit</button>
+                    <button id="hint-btn" class="btn btn-secondary">Show Hint</button>
+                </div>
+
+                <div id="russian-keyboard" class="russian-keyboard"></div>
+
+                <div id="feedback" class="feedback"></div>
+            </div>
+
+            <div id="lesson-complete" class="lesson-complete" style="display: none;">
+                <h2>Lesson Complete! 🎉</h2>
+                <div class="results">
+                    <p>Total Questions: <strong id="total-questions">0</strong></p>
+                    <p>Correct Answers: <strong id="correct-answers" class="correct">0</strong></p>
+                    <p>Incorrect Answers: <strong id="incorrect-answers" class="error">0</strong></p>
+                    <p>Accuracy: <strong id="accuracy">0%</strong></p>
+                </div>
+                <button id="new-lesson-btn" class="btn btn-primary">Start New Lesson</button>
+            </div>
+        </div>
+
+        <div id="statistics" class="statistics">
+            <h3>Your Most Challenging Letters</h3>
+            <div id="mistake-list"></div>
+        </div>
+
+        <footer>
+            <p>Focus areas are automatically adjusted based on your performance</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
