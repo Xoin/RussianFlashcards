@@ -1,0 +1,12 @@
+{
+  "name": "russian-flashcards",
+  "version": "1.0.0",
+  "description": "A flashcard application for learning Russian letters and simple words",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["flashcards", "russian", "learning"],
+  "author": "",
+  "license": "MIT"
+}
