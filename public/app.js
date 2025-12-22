@@ -32,8 +32,15 @@ class FlashcardApp {
       correctAnswers: document.getElementById('correct-answers'),
       incorrectAnswers: document.getElementById('incorrect-answers'),
       accuracy: document.getElementById('accuracy'),
-      mistakeList: document.getElementById('mistake-list')
+      mistakeList: document.getElementById('mistake-list'),
+      russianKeyboard: document.getElementById('russian-keyboard')
     };
+    
+    this.russianLetters = [
+      'а', 'б', 'в', 'г', 'д', 'е', 'ё', 'ж', 'з', 'и', 'й',
+      'к', 'л', 'м', 'н', 'о', 'п', 'р', 'с', 'т', 'у',
+      'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'ъ', 'ы', 'ь', 'э', 'ю', 'я'
+    ];
   }
 
   attachEventListeners() {
@@ -50,6 +57,46 @@ class FlashcardApp {
     // Auto-focus input when typing
     this.elements.letterInput.addEventListener('input', (e) => {
       e.target.value = e.target.value.toLowerCase();
+    });
+    
+    // Initialize keyboard
+    this.initKeyboard();
+  }
+
+  initKeyboard() {
+    this.elements.russianKeyboard.innerHTML = '';
+    
+    this.russianLetters.forEach(letter => {
+      const key = document.createElement('button');
+      key.className = 'keyboard-key';
+      key.textContent = letter;
+      key.dataset.letter = letter;
+      key.addEventListener('click', () => this.handleKeyboardClick(letter));
+      this.elements.russianKeyboard.appendChild(key);
+    });
+  }
+
+  handleKeyboardClick(letter) {
+    const key = this.elements.russianKeyboard.querySelector(`[data-letter="${letter}"]`);
+    if (!this.elements.letterInput.disabled && !key.classList.contains('disabled')) {
+      this.elements.letterInput.value = letter;
+      this.elements.letterInput.focus();
+    }
+  }
+
+  updateKeyboard() {
+    // Get all unique letters in the current word
+    const wordLetters = new Set(this.currentWord.toLowerCase().split(''));
+    
+    // Update each keyboard key
+    const keys = this.elements.russianKeyboard.querySelectorAll('.keyboard-key');
+    keys.forEach(key => {
+      const letter = key.dataset.letter;
+      if (wordLetters.has(letter)) {
+        key.classList.remove('disabled');
+      } else {
+        key.classList.add('disabled');
+      }
     });
   }
 
@@ -146,6 +193,7 @@ class FlashcardApp {
     this.elements.hintBtn.disabled = false;
     
     this.updateStats();
+    this.updateKeyboard();
     this.showFlashcard();
   }
 

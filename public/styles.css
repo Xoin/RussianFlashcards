@@ -238,6 +238,51 @@ h1 {
     border: 2px solid #f5c6cb;
 }
 
+.russian-keyboard {
+    display: grid;
+    grid-template-columns: repeat(11, 1fr);
+    gap: 8px;
+    padding: 20px;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.keyboard-key {
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 12px 8px;
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 40px;
+}
+
+.keyboard-key:hover {
+    background: #5568d3;
+    transform: translateY(-2px);
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+}
+
+.keyboard-key:active {
+    transform: translateY(0);
+}
+
+.keyboard-key.disabled {
+    background: #ddd;
+    color: #999;
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+.keyboard-key.disabled:hover {
+    background: #ddd;
+    transform: none;
+    box-shadow: none;
+}
+
 .lesson-complete {
     text-align: center;
     padding: 40px 20px;
@@ -331,5 +376,17 @@ footer {
     .stats-bar {
         flex-direction: column;
         gap: 10px;
+    }
+    
+    .russian-keyboard {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 5px;
+        padding: 15px 10px;
+    }
+    
+    .keyboard-key {
+        padding: 10px 5px;
+        font-size: 1em;
+        min-width: 35px;
     }
 }
