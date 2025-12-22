@@ -20,13 +20,15 @@ class Database {
         this.data = JSON.parse(content);
         // Ensure ID counters exist for backwards compatibility
         if (!this.data.nextMistakeId) {
-          this.data.nextMistakeId = this.data.letterMistakes.length > 0
-            ? Math.max(...this.data.letterMistakes.filter(m => m.id).map(m => m.id), 0) + 1
+          const idsWithValues = this.data.letterMistakes.filter(m => m.id).map(m => m.id);
+          this.data.nextMistakeId = idsWithValues.length > 0
+            ? Math.max(...idsWithValues) + 1
             : 1;
         }
         if (!this.data.nextProgressId) {
-          this.data.nextProgressId = this.data.userProgress.length > 0
-            ? Math.max(...this.data.userProgress.filter(p => p.id).map(p => p.id), 0) + 1
+          const idsWithValues = this.data.userProgress.filter(p => p.id).map(p => p.id);
+          this.data.nextProgressId = idsWithValues.length > 0
+            ? Math.max(...idsWithValues) + 1
             : 1;
         }
       } else {
