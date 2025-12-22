@@ -482,18 +482,16 @@ const server = http.createServer(async (req, res) => {
         const port = data.port || 1234;
         const model = data.model || null;
         
-        // Validate if host and port are provided
-        if (data.host || data.port) {
-          const validation = validateLMStudioHostPort(host, port);
-          if (!validation.valid) {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: validation.error }));
-            return;
-          }
+        // Always validate the final values (even if using defaults)
+        const validation = validateLMStudioHostPort(host, port);
+        if (!validation.valid) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: validation.error }));
+          return;
         }
         
         // Update LM Studio client configuration
-        lmStudio.updateConfig(host, port, model);
+        lmStudio.updateConfig(validation.host, validation.port, model);
         
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: 'LM Studio configuration updated' }));

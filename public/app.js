@@ -1054,8 +1054,8 @@ class FlashcardApp {
         }
         if (data.lmstudio) {
           this.applyLMStudioSettingsToUI(data.lmstudio);
-          // Fetch models if connected
-          this.fetchLMStudioModels();
+          // Don't auto-fetch models on load - only fetch when user explicitly requests
+          // or after a successful connection test
         }
       }
     } catch (err) {
@@ -1087,8 +1087,19 @@ class FlashcardApp {
       this.elements.lmstudioPort.value = lmstudioSettings.port || 1234;
     }
     if (this.elements.lmstudioModel && lmstudioSettings.model) {
-      // Model will be set after fetching models
-      this.elements.lmstudioModel.setAttribute('data-selected', lmstudioSettings.model);
+      // If a model was previously selected, add it to the dropdown if not already present
+      const existingOption = Array.from(this.elements.lmstudioModel.options).find(
+        opt => opt.value === lmstudioSettings.model
+      );
+      
+      if (!existingOption) {
+        const option = document.createElement('option');
+        option.value = lmstudioSettings.model;
+        option.textContent = lmstudioSettings.model;
+        this.elements.lmstudioModel.appendChild(option);
+      }
+      
+      this.elements.lmstudioModel.value = lmstudioSettings.model;
     }
   }
 
@@ -1472,6 +1483,9 @@ class FlashcardApp {
       const data = await response.json();
       
       if (data.success && data.models && data.models.length > 0) {
+        // Save current selection before replacing options
+        const currentSelection = this.elements.lmstudioModel.value;
+        
         // Populate model dropdown
         this.elements.lmstudioModel.innerHTML = '<option value="">No model selected</option>';
         data.models.forEach(model => {
@@ -1481,11 +1495,9 @@ class FlashcardApp {
           this.elements.lmstudioModel.appendChild(option);
         });
         
-        // Select previously saved model if any
-        const selectedModel = this.elements.lmstudioModel.getAttribute('data-selected');
-        if (selectedModel) {
-          this.elements.lmstudioModel.value = selectedModel;
-          this.elements.lmstudioModel.removeAttribute('data-selected');
+        // Restore previous selection if it exists in the new list
+        if (currentSelection && Array.from(this.elements.lmstudioModel.options).some(opt => opt.value === currentSelection)) {
+          this.elements.lmstudioModel.value = currentSelection;
         }
       } else {
         this.elements.lmstudioModel.innerHTML = '<option value="">No models available</option>';

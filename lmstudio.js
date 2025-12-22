@@ -234,8 +234,7 @@ English: [translation]`;
         hostname: this.host,
         port: this.port,
         path: '/v1/models',
-        method: 'GET',
-        timeout: 5000
+        method: 'GET'
       };
 
       const req = http.request(options, (res) => {
@@ -258,7 +257,8 @@ English: [translation]`;
         reject(err);
       });
 
-      req.on('timeout', () => {
+      // Set timeout using setTimeout
+      req.setTimeout(5000, () => {
         req.destroy();
         reject(new Error('Connection timeout'));
       });
@@ -273,8 +273,7 @@ English: [translation]`;
         hostname: this.host,
         port: this.port,
         path: '/v1/models',
-        method: 'GET',
-        timeout: 10000
+        method: 'GET'
       };
 
       const req = http.request(options, (res) => {
@@ -312,7 +311,8 @@ English: [translation]`;
         reject(err);
       });
 
-      req.on('timeout', () => {
+      // Set timeout using setTimeout
+      req.setTimeout(10000, () => {
         req.destroy();
         reject(new Error('Request timeout'));
       });
