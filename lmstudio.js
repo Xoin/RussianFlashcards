@@ -1,20 +1,35 @@
 const http = require('http');
 
 class LMStudioClient {
-  constructor(host = 'localhost', port = 1234) {
+  constructor(host = 'localhost', port = 1234, model = null) {
     this.host = host;
     this.port = port;
+    this.model = model;
+    this.baseUrl = `http://${host}:${port}`;
+  }
+
+  updateConfig(host, port, model = null) {
+    this.host = host;
+    this.port = port;
+    this.model = model;
     this.baseUrl = `http://${host}:${port}`;
   }
 
   generateCompletion(prompt, maxTokens = 100) {
     return new Promise((resolve, reject) => {
-      const postData = JSON.stringify({
+      const requestBody = {
         prompt: prompt,
         max_tokens: maxTokens,
         temperature: 0.7,
         stop: ["\n\n", "###"]
-      });
+      };
+      
+      // Only include model if it's set
+      if (this.model) {
+        requestBody.model = this.model;
+      }
+      
+      const postData = JSON.stringify(requestBody);
 
       const options = {
         hostname: this.host,
@@ -211,6 +226,99 @@ English: [translation]`;
       console.error('Error parsing generated sentence:', err);
       return null;
     }
+  }
+
+  async testConnection() {
+    return new Promise((resolve, reject) => {
+      const options = {
+        hostname: this.host,
+        port: this.port,
+        path: '/v1/models',
+        method: 'GET'
+      };
+
+      const req = http.request(options, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            resolve({ connected: true, message: 'Successfully connected to LM Studio' });
+          } else {
+            reject(new Error(`LM Studio returned status ${res.statusCode}`));
+          }
+        });
+      });
+
+      req.on('error', (err) => {
+        reject(err);
+      });
+
+      // Set timeout using setTimeout
+      req.setTimeout(5000, () => {
+        req.destroy();
+        reject(new Error('Connection timeout'));
+      });
+
+      req.end();
+    });
+  }
+
+  async getAvailableModels() {
+    return new Promise((resolve, reject) => {
+      const options = {
+        hostname: this.host,
+        port: this.port,
+        path: '/v1/models',
+        method: 'GET'
+      };
+
+      const req = http.request(options, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          try {
+            if (res.statusCode === 200) {
+              const response = JSON.parse(data);
+              if (response.data && Array.isArray(response.data)) {
+                const models = response.data.map(model => ({
+                  id: model.id,
+                  name: model.id,
+                  created: model.created,
+                  owned_by: model.owned_by
+                }));
+                resolve(models);
+              } else {
+                reject(new Error('Invalid response structure from LM Studio'));
+              }
+            } else {
+              reject(new Error(`LM Studio returned status ${res.statusCode}`));
+            }
+          } catch (err) {
+            reject(err);
+          }
+        });
+      });
+
+      req.on('error', (err) => {
+        reject(err);
+      });
+
+      // Set timeout using setTimeout
+      req.setTimeout(10000, () => {
+        req.destroy();
+        reject(new Error('Request timeout'));
+      });
+
+      req.end();
+    });
   }
 }
 

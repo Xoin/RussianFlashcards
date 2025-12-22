@@ -132,7 +132,14 @@ class FlashcardApp {
       vocabB1: document.getElementById('vocab-b1'),
       vocabB2: document.getElementById('vocab-b2'),
       vocabC1: document.getElementById('vocab-c1'),
-      vocabC2: document.getElementById('vocab-c2')
+      vocabC2: document.getElementById('vocab-c2'),
+      // LM Studio configuration elements
+      lmstudioHost: document.getElementById('lmstudio-host'),
+      lmstudioPort: document.getElementById('lmstudio-port'),
+      lmstudioModel: document.getElementById('lmstudio-model'),
+      testConnectionBtn: document.getElementById('test-connection-btn'),
+      refreshModelsBtn: document.getElementById('refresh-models-btn'),
+      connectionStatus: document.getElementById('connection-status')
     };
     
     this.russianLetters = [
@@ -218,6 +225,27 @@ class FlashcardApp {
     this.elements.autoProgress.addEventListener('change', async (e) => {
       const autoProgress = e.target.checked;
       await this.updateUserLevelSettings({ auto_progress: autoProgress });
+    });
+    
+    // LM Studio configuration event listeners
+    this.elements.testConnectionBtn.addEventListener('click', () => {
+      this.testLMStudioConnection();
+    });
+    
+    this.elements.refreshModelsBtn.addEventListener('click', () => {
+      this.fetchLMStudioModels();
+    });
+    
+    this.elements.lmstudioHost.addEventListener('change', () => {
+      this.saveLMStudioSettings();
+    });
+    
+    this.elements.lmstudioPort.addEventListener('change', () => {
+      this.saveLMStudioSettings();
+    });
+    
+    this.elements.lmstudioModel.addEventListener('change', () => {
+      this.saveLMStudioSettings();
     });
     
     // Sentence exercise event listeners
@@ -1024,6 +1052,11 @@ class FlashcardApp {
           this.audioSettings = { ...this.audioSettings, ...data.audio };
           this.applySettingsToUI();
         }
+        if (data.lmstudio) {
+          this.applyLMStudioSettingsToUI(data.lmstudio);
+          // Don't auto-fetch models on load - only fetch when user explicitly requests
+          // or after a successful connection test
+        }
       }
     } catch (err) {
       console.error('Error loading settings:', err);
@@ -1043,6 +1076,30 @@ class FlashcardApp {
     }
     if (this.elements.audioVoice) {
       this.elements.audioVoice.value = this.audioSettings.voiceIndex;
+    }
+  }
+
+  applyLMStudioSettingsToUI(lmstudioSettings) {
+    if (this.elements.lmstudioHost) {
+      this.elements.lmstudioHost.value = lmstudioSettings.host || 'localhost';
+    }
+    if (this.elements.lmstudioPort) {
+      this.elements.lmstudioPort.value = lmstudioSettings.port || 1234;
+    }
+    if (this.elements.lmstudioModel && lmstudioSettings.model) {
+      // If a model was previously selected, add it to the dropdown if not already present
+      const existingOption = Array.from(this.elements.lmstudioModel.options).find(
+        opt => opt.value === lmstudioSettings.model
+      );
+      
+      if (!existingOption) {
+        const option = document.createElement('option');
+        option.value = lmstudioSettings.model;
+        option.textContent = lmstudioSettings.model;
+        this.elements.lmstudioModel.appendChild(option);
+      }
+      
+      this.elements.lmstudioModel.value = lmstudioSettings.model;
     }
   }
 
@@ -1373,6 +1430,131 @@ class FlashcardApp {
       }
     } catch (err) {
       console.error('Error updating user level settings:', err);
+    }
+  }
+
+  async testLMStudioConnection() {
+    const host = this.elements.lmstudioHost.value || 'localhost';
+    const port = parseInt(this.elements.lmstudioPort.value) || 1234;
+    
+    // Update UI to show testing
+    this.elements.connectionStatus.textContent = 'Testing connection...';
+    this.elements.connectionStatus.className = 'connection-status testing';
+    this.elements.testConnectionBtn.disabled = true;
+    
+    try {
+      const response = await fetch('/api/lmstudio/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host, port })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.connected) {
+        this.elements.connectionStatus.textContent = '✓ Connected';
+        this.elements.connectionStatus.className = 'connection-status success';
+        // Auto-fetch models on successful connection
+        this.fetchLMStudioModels();
+      } else {
+        this.elements.connectionStatus.textContent = '✗ ' + (data.message || 'Connection failed');
+        this.elements.connectionStatus.className = 'connection-status error';
+      }
+    } catch (err) {
+      console.error('Error testing connection:', err);
+      this.elements.connectionStatus.textContent = '✗ Connection failed';
+      this.elements.connectionStatus.className = 'connection-status error';
+    } finally {
+      this.elements.testConnectionBtn.disabled = false;
+    }
+  }
+
+  async fetchLMStudioModels() {
+    const host = this.elements.lmstudioHost.value || 'localhost';
+    const port = parseInt(this.elements.lmstudioPort.value) || 1234;
+    
+    try {
+      const response = await fetch('/api/lmstudio/models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host, port })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.models && data.models.length > 0) {
+        // Save current selection before replacing options
+        const currentSelection = this.elements.lmstudioModel.value;
+        
+        // Populate model dropdown
+        this.elements.lmstudioModel.innerHTML = '<option value="">No model selected</option>';
+        data.models.forEach(model => {
+          const option = document.createElement('option');
+          option.value = model.id;
+          option.textContent = model.name;
+          this.elements.lmstudioModel.appendChild(option);
+        });
+        
+        // Restore previous selection if it exists in the new list
+        if (currentSelection && Array.from(this.elements.lmstudioModel.options).some(opt => opt.value === currentSelection)) {
+          this.elements.lmstudioModel.value = currentSelection;
+        }
+      } else {
+        this.elements.lmstudioModel.innerHTML = '<option value="">No models available</option>';
+      }
+    } catch (err) {
+      console.error('Error fetching models:', err);
+      this.elements.lmstudioModel.innerHTML = '<option value="">Error fetching models</option>';
+    }
+  }
+
+  async saveLMStudioSettings() {
+    const host = this.elements.lmstudioHost.value || 'localhost';
+    const port = parseInt(this.elements.lmstudioPort.value) || 1234;
+    const model = this.elements.lmstudioModel.value || null;
+    
+    try {
+      // Save to database settings
+      const response = await fetch('/api/settings');
+      if (!response.ok) {
+        throw new Error('Failed to fetch current settings');
+      }
+      const currentSettings = await response.json();
+      
+      const saveResponse = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...currentSettings,
+          lmstudio: { host, port, model }
+        })
+      });
+      
+      if (!saveResponse.ok) {
+        throw new Error('Failed to save settings');
+      }
+      
+      // Update server-side LM Studio configuration
+      const configResponse = await fetch('/api/lmstudio/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host, port, model })
+      });
+      
+      if (!configResponse.ok) {
+        throw new Error('Failed to update server configuration');
+      }
+    } catch (err) {
+      console.error('Error saving LM Studio settings:', err);
+      // Show error to user if connection status element is available
+      if (this.elements.connectionStatus) {
+        this.elements.connectionStatus.textContent = '✗ Failed to save settings';
+        this.elements.connectionStatus.className = 'connection-status error';
+        setTimeout(() => {
+          this.elements.connectionStatus.textContent = '';
+          this.elements.connectionStatus.className = 'connection-status';
+        }, 3000);
+      }
     }
   }
 }
