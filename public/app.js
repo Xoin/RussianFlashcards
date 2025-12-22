@@ -7,6 +7,7 @@ class FlashcardApp {
     this.correctAnswer = '';
     this.sessionCorrect = 0;
     this.sessionIncorrect = 0;
+    this.wrongLettersThisWord = new Set(); // Track wrong letters for current word
     
     this.initElements();
     this.attachEventListeners();
@@ -85,17 +86,14 @@ class FlashcardApp {
   }
 
   updateKeyboard() {
-    // Get all unique letters in the current word
-    const wordLetters = new Set(this.currentWord.toLowerCase().split(''));
-    
-    // Update each keyboard key
+    // Enable all keys at start, only disable wrong attempts
     const keys = this.elements.russianKeyboard.querySelectorAll('.keyboard-key');
     keys.forEach(key => {
       const letter = key.dataset.letter;
-      if (wordLetters.has(letter)) {
-        key.classList.remove('disabled');
-      } else {
+      if (this.wrongLettersThisWord.has(letter)) {
         key.classList.add('disabled');
+      } else {
+        key.classList.remove('disabled');
       }
     });
   }
@@ -185,6 +183,9 @@ class FlashcardApp {
     
     this.correctAnswer = this.currentWord[this.blankPosition];
     
+    // Reset wrong letters tracking for new word
+    this.wrongLettersThisWord.clear();
+    
     this.renderWord();
     this.clearFeedback();
     this.elements.letterInput.value = '';
@@ -261,6 +262,11 @@ class FlashcardApp {
       }, 1500);
     } else {
       this.sessionIncorrect++;
+      
+      // Mark this letter as wrong for this word
+      this.wrongLettersThisWord.add(userAnswer);
+      this.updateKeyboard();
+      
       this.showFeedback(`Wrong. The correct letter is: ${this.correctAnswer}`, false);
       this.revealLetter(false);
       
