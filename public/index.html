@@ -43,6 +43,38 @@
             <div class="setting-item">
                 <button id="test-audio-btn" class="btn btn-secondary">Test Audio</button>
             </div>
+            
+            <h3>Learning Level</h3>
+            <div class="setting-item">
+                <label for="cefr-level">Current Level:</label>
+                <select id="cefr-level">
+                    <option value="A1">A1 - Beginner (0-256 words)</option>
+                    <option value="A2">A2 - Elementary (257-450 words)</option>
+                    <option value="B1">B1 - Intermediate (451-658 words)</option>
+                    <option value="B2">B2 - Upper Intermediate (659-769 words)</option>
+                    <option value="C1">C1 - Advanced (770-867 words)</option>
+                    <option value="C2">C2 - Mastery (868-1000 words)</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <label>
+                    <input type="checkbox" id="auto-progress" checked>
+                    Automatically advance to next level (80% mastery)
+                </label>
+            </div>
+        </div>
+
+        <div class="user-level-indicator">
+            <div class="level-badge-container">
+                <span class="level-badge" id="level-badge">A1</span>
+                <span class="level-description" id="level-description">Beginner</span>
+            </div>
+            <div class="level-progress-container">
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="level-progress-bar" style="width: 0%"></div>
+                </div>
+                <span class="progress-text" id="level-progress-text">0 / 256 words</span>
+            </div>
         </div>
 
         <div class="stats-bar">
@@ -215,6 +247,34 @@
         <div id="statistics" class="statistics">
             <h3>Your Most Challenging Letters</h3>
             <div id="mistake-list"></div>
+            
+            <h3>Vocabulary by Level</h3>
+            <div id="vocabulary-stats" class="vocabulary-stats">
+                <div class="vocab-level-item">
+                    <span class="vocab-level-label">A1 (Beginner):</span>
+                    <span class="vocab-level-count" id="vocab-a1">0 / 256 (0%)</span>
+                </div>
+                <div class="vocab-level-item">
+                    <span class="vocab-level-label">A2 (Elementary):</span>
+                    <span class="vocab-level-count" id="vocab-a2">0 / 194 (0%)</span>
+                </div>
+                <div class="vocab-level-item">
+                    <span class="vocab-level-label">B1 (Intermediate):</span>
+                    <span class="vocab-level-count" id="vocab-b1">0 / 208 (0%)</span>
+                </div>
+                <div class="vocab-level-item">
+                    <span class="vocab-level-label">B2 (Upper Intermediate):</span>
+                    <span class="vocab-level-count" id="vocab-b2">0 / 111 (0%)</span>
+                </div>
+                <div class="vocab-level-item">
+                    <span class="vocab-level-label">C1 (Advanced):</span>
+                    <span class="vocab-level-count" id="vocab-c1">0 / 98 (0%)</span>
+                </div>
+                <div class="vocab-level-item">
+                    <span class="vocab-level-label">C2 (Mastery):</span>
+                    <span class="vocab-level-count" id="vocab-c2">0 / 133 (0%)</span>
+                </div>
+            </div>
         </div>
 
         <footer>

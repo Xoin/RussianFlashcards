@@ -44,6 +44,7 @@ class FlashcardApp {
     this.attachEventListeners();
     this.initAudio();
     this.loadSettings();
+    this.loadUserLevel();
     this.loadLesson();
     this.loadStatistics();
   }
@@ -117,7 +118,21 @@ class FlashcardApp {
       modalTranslation: document.getElementById('modal-translation'),
       modalPos: document.getElementById('modal-pos'),
       modalSentenceList: document.getElementById('modal-sentence-list'),
-      closeModalBtn: document.getElementById('close-modal-btn')
+      closeModalBtn: document.getElementById('close-modal-btn'),
+      // CEFR level elements
+      levelBadge: document.getElementById('level-badge'),
+      levelDescription: document.getElementById('level-description'),
+      levelProgressBar: document.getElementById('level-progress-bar'),
+      levelProgressText: document.getElementById('level-progress-text'),
+      cefrLevelSelect: document.getElementById('cefr-level'),
+      autoProgress: document.getElementById('auto-progress'),
+      // Vocabulary stats elements
+      vocabA1: document.getElementById('vocab-a1'),
+      vocabA2: document.getElementById('vocab-a2'),
+      vocabB1: document.getElementById('vocab-b1'),
+      vocabB2: document.getElementById('vocab-b2'),
+      vocabC1: document.getElementById('vocab-c1'),
+      vocabC2: document.getElementById('vocab-c2')
     };
     
     this.russianLetters = [
@@ -192,6 +207,17 @@ class FlashcardApp {
     
     this.elements.testAudioBtn.addEventListener('click', () => {
       this.speakWord('привет');
+    });
+    
+    // CEFR level event listeners
+    this.elements.cefrLevelSelect.addEventListener('change', async (e) => {
+      const level = e.target.value;
+      await this.updateUserLevel(level);
+    });
+    
+    this.elements.autoProgress.addEventListener('change', async (e) => {
+      const autoProgress = e.target.checked;
+      await this.updateUserLevelSettings({ auto_progress: autoProgress });
     });
     
     // Sentence exercise event listeners
@@ -1234,6 +1260,119 @@ class FlashcardApp {
       }
     } catch (err) {
       console.error('Error loading SRS stats:', err);
+    }
+  }
+
+  async loadUserLevel() {
+    try {
+      const response = await fetch('/api/user/level');
+      const data = await response.json();
+      
+      if (data.userLevel) {
+        const level = data.userLevel.current_level;
+        const progress = data.userLevel.level_progress || 0;
+        const wordsMastered = data.userLevel.words_mastered || 0;
+        const autoProgress = data.userLevel.auto_progress !== undefined ? data.userLevel.auto_progress : true;
+        
+        // Update level badge
+        if (this.elements.levelBadge) {
+          this.elements.levelBadge.textContent = level;
+        }
+        
+        // Update level description
+        if (this.elements.levelDescription) {
+          const descriptions = {
+            'A1': 'Beginner',
+            'A2': 'Elementary',
+            'B1': 'Intermediate',
+            'B2': 'Upper Intermediate',
+            'C1': 'Advanced',
+            'C2': 'Mastery'
+          };
+          this.elements.levelDescription.textContent = descriptions[level] || '';
+        }
+        
+        // Update progress bar
+        if (this.elements.levelProgressBar) {
+          this.elements.levelProgressBar.style.width = `${progress * 100}%`;
+        }
+        
+        // Update progress text
+        if (this.elements.levelProgressText) {
+          const levelRanges = {
+            'A1': 256, 'A2': 194, 'B1': 208, 'B2': 111, 'C1': 98, 'C2': 133
+          };
+          const total = levelRanges[level] || 0;
+          this.elements.levelProgressText.textContent = `${wordsMastered} / ${total} words`;
+        }
+        
+        // Update select dropdown
+        if (this.elements.cefrLevelSelect) {
+          this.elements.cefrLevelSelect.value = level;
+        }
+        
+        // Update auto progress checkbox
+        if (this.elements.autoProgress) {
+          this.elements.autoProgress.checked = autoProgress;
+        }
+      }
+      
+      // Update vocabulary distribution
+      if (data.distribution) {
+        this.updateVocabularyDistribution(data.distribution);
+      }
+    } catch (err) {
+      console.error('Error loading user level:', err);
+    }
+  }
+
+  updateVocabularyDistribution(distribution) {
+    const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+    
+    for (const level of levels) {
+      const elementId = `vocab-${level.toLowerCase()}`;
+      const element = this.elements[elementId.replace('-', '')]; // e.g., vocabA1
+      
+      if (element && distribution[level]) {
+        const { total, mastered, percentage } = distribution[level];
+        element.textContent = `${mastered} / ${total} (${percentage}%)`;
+      }
+    }
+  }
+
+  async updateUserLevel(level) {
+    try {
+      const response = await fetch('/api/user/level', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        await this.loadUserLevel();
+      }
+    } catch (err) {
+      console.error('Error updating user level:', err);
+    }
+  }
+
+  async updateUserLevelSettings(settings) {
+    try {
+      const response = await fetch('/api/user/level', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        await this.loadUserLevel();
+      }
+    } catch (err) {
+      console.error('Error updating user level settings:', err);
     }
   }
 }
