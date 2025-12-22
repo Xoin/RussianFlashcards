@@ -17,13 +17,19 @@ class LMStudioClient {
 
   generateCompletion(prompt, maxTokens = 100) {
     return new Promise((resolve, reject) => {
-      const postData = JSON.stringify({
-        model: this.model,
+      const requestBody = {
         prompt: prompt,
         max_tokens: maxTokens,
         temperature: 0.7,
         stop: ["\n\n", "###"]
-      });
+      };
+      
+      // Only include model if it's set
+      if (this.model) {
+        requestBody.model = this.model;
+      }
+      
+      const postData = JSON.stringify(requestBody);
 
       const options = {
         hostname: this.host,

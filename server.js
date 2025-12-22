@@ -9,6 +9,20 @@ const PORT = 3000;
 const db = new Database();
 const lmStudio = new LMStudioClient();
 
+// Validation helper functions
+function validateLMStudioHostPort(host, port) {
+  if (!host || typeof host !== 'string') {
+    return { valid: false, error: 'Invalid host parameter' };
+  }
+  
+  const portNum = parseInt(port);
+  if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+    return { valid: false, error: 'Invalid port parameter (must be 1-65535)' };
+  }
+  
+  return { valid: true, host, port: portNum };
+}
+
 // Initialize database and start server
 async function startServer() {
   try {
@@ -390,21 +404,15 @@ const server = http.createServer(async (req, res) => {
         const data = JSON.parse(body);
         
         // Validate host and port
-        if (!data.host || typeof data.host !== 'string') {
+        const validation = validateLMStudioHostPort(data.host, data.port);
+        if (!validation.valid) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Invalid host parameter' }));
-          return;
-        }
-        
-        const port = parseInt(data.port);
-        if (isNaN(port) || port < 1 || port > 65535) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Invalid port parameter (must be 1-65535)' }));
+          res.end(JSON.stringify({ error: validation.error }));
           return;
         }
         
         // Create a temporary client to test the connection
-        const testClient = new LMStudioClient(data.host, port);
+        const testClient = new LMStudioClient(validation.host, validation.port);
         const result = await testClient.testConnection();
         
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -433,21 +441,15 @@ const server = http.createServer(async (req, res) => {
         const data = JSON.parse(body);
         
         // Validate host and port
-        if (!data.host || typeof data.host !== 'string') {
+        const validation = validateLMStudioHostPort(data.host, data.port);
+        if (!validation.valid) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Invalid host parameter' }));
-          return;
-        }
-        
-        const port = parseInt(data.port);
-        if (isNaN(port) || port < 1 || port > 65535) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Invalid port parameter (must be 1-65535)' }));
+          res.end(JSON.stringify({ error: validation.error }));
           return;
         }
         
         // Create a temporary client to fetch models
-        const testClient = new LMStudioClient(data.host, port);
+        const testClient = new LMStudioClient(validation.host, validation.port);
         const models = await testClient.getAvailableModels();
         
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -475,27 +477,22 @@ const server = http.createServer(async (req, res) => {
       try {
         const data = JSON.parse(body);
         
-        // Validate configuration
-        if (data.host && typeof data.host !== 'string') {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Invalid host parameter' }));
-          return;
-        }
+        // Use defaults if not provided
+        const host = data.host || 'localhost';
+        const port = data.port || 1234;
+        const model = data.model || null;
         
-        if (data.port !== undefined) {
-          const port = parseInt(data.port);
-          if (isNaN(port) || port < 1 || port > 65535) {
+        // Validate if host and port are provided
+        if (data.host || data.port) {
+          const validation = validateLMStudioHostPort(host, port);
+          if (!validation.valid) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Invalid port parameter (must be 1-65535)' }));
+            res.end(JSON.stringify({ error: validation.error }));
             return;
           }
         }
         
         // Update LM Studio client configuration
-        const host = data.host || 'localhost';
-        const port = data.port || 1234;
-        const model = data.model || null;
-        
         lmStudio.updateConfig(host, port, model);
         
         res.writeHead(200, { 'Content-Type': 'application/json' });
