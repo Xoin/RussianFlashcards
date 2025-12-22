@@ -1516,9 +1516,12 @@ class FlashcardApp {
     try {
       // Save to database settings
       const response = await fetch('/api/settings');
+      if (!response.ok) {
+        throw new Error('Failed to fetch current settings');
+      }
       const currentSettings = await response.json();
       
-      await fetch('/api/settings', {
+      const saveResponse = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1527,14 +1530,31 @@ class FlashcardApp {
         })
       });
       
+      if (!saveResponse.ok) {
+        throw new Error('Failed to save settings');
+      }
+      
       // Update server-side LM Studio configuration
-      await fetch('/api/lmstudio/config', {
+      const configResponse = await fetch('/api/lmstudio/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ host, port, model })
       });
+      
+      if (!configResponse.ok) {
+        throw new Error('Failed to update server configuration');
+      }
     } catch (err) {
       console.error('Error saving LM Studio settings:', err);
+      // Show error to user if connection status element is available
+      if (this.elements.connectionStatus) {
+        this.elements.connectionStatus.textContent = '✗ Failed to save settings';
+        this.elements.connectionStatus.className = 'connection-status error';
+        setTimeout(() => {
+          this.elements.connectionStatus.textContent = '';
+          this.elements.connectionStatus.className = 'connection-status';
+        }, 3000);
+      }
     }
   }
 }
