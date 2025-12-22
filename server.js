@@ -47,11 +47,57 @@ const server = http.createServer(async (req, res) => {
         ? progress.incorrect / progress.total 
         : 0;
       
-      const problematicLetters = await db.getProblematicLetters(5);
-      const lesson = await lmStudio.generateLesson(errorRate, problematicLetters);
+      // Get due items for review (prioritized)
+      const dueItems = await db.getDueItems();
+      
+      // Get new items to introduce (5 per lesson)
+      const newItems = await db.getNewItems(5);
+      
+      // Combine due and new items for the lesson
+      const srsItems = [...dueItems, ...newItems];
+      
+      // Extract unique words from SRS items
+      const srsWords = [...new Set(srsItems.map(item => item.word))];
+      
+      // If we don't have enough SRS words, generate additional ones
+      let lessonWords = [...srsWords];
+      
+      if (lessonWords.length === 0) {
+        // No SRS items yet, use traditional lesson generation
+        const problematicLetters = await db.getProblematicLetters(5);
+        const lesson = await lmStudio.generateLesson(errorRate, problematicLetters);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(lesson));
+        return;
+      }
+      
+      // Determine lesson length based on error rate
+      const lessonLength = lmStudio.calculateLessonLength(errorRate);
+      
+      // If we need more words, generate additional ones
+      if (lessonWords.length < lessonLength) {
+        const problematicLetters = await db.getProblematicLetters(5);
+        const focusLetters = problematicLetters.slice(0, 3).map(l => l.letter);
+        const additionalWords = await lmStudio.generateWords(
+          lessonLength - lessonWords.length, 
+          focusLetters, 
+          errorRate
+        );
+        lessonWords = [...lessonWords, ...additionalWords];
+      }
+      
+      // Limit to lesson length
+      lessonWords = lessonWords.slice(0, lessonLength);
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(lesson));
+      res.end(JSON.stringify({
+        words: lessonWords,
+        length: lessonWords.length,
+        dueCount: dueItems.length,
+        newCount: newItems.length,
+        srsItems: srsItems
+      }));
     } catch (err) {
       console.error('Error generating lesson:', err);
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -125,13 +171,78 @@ const server = http.createServer(async (req, res) => {
     try {
       const mistakes = await db.getLetterMistakes();
       const progress = await db.getRecentProgress(7);
+      const srsStats = await db.getSrsStats();
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ mistakes, progress }));
+      res.end(JSON.stringify({ mistakes, progress, srsStats }));
     } catch (err) {
       console.error('Error fetching statistics:', err);
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Failed to fetch statistics' }));
+    }
+    return;
+  }
+
+  // SRS-specific endpoints
+  if (pathname === '/api/review' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        
+        // Validate required fields
+        if (typeof data.itemId !== 'number' || data.itemId < 1) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid itemId' }));
+          return;
+        }
+        
+        if (typeof data.quality !== 'number' || data.quality < 1 || data.quality > 5) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid quality (must be 1-5)' }));
+          return;
+        }
+        
+        const responseTime = data.responseTime || null;
+        const updatedItem = await db.updateSrsItem(data.itemId, data.quality, responseTime);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, item: updatedItem }));
+      } catch (err) {
+        console.error('Error processing review:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to process review' }));
+      }
+    });
+    return;
+  }
+
+  if (pathname === '/api/due-count' && req.method === 'GET') {
+    try {
+      const dueCount = await db.getDueCount();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ dueCount }));
+    } catch (err) {
+      console.error('Error fetching due count:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to fetch due count' }));
+    }
+    return;
+  }
+
+  if (pathname === '/api/srs-stats' && req.method === 'GET') {
+    try {
+      const stats = await db.getSrsStats();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(stats));
+    } catch (err) {
+      console.error('Error fetching SRS stats:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to fetch SRS stats' }));
     }
     return;
   }

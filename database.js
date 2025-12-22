@@ -10,10 +10,12 @@ class Database {
       settings: {},
       sentences: [],
       wordDefinitions: [],
+      srsItems: [],
       nextMistakeId: 1,
       nextProgressId: 1,
       nextSentenceId: 1,
-      nextDefinitionId: 1
+      nextDefinitionId: 1,
+      nextSrsItemId: 1
     };
   }
 
@@ -57,6 +59,17 @@ class Database {
         if (!this.data.nextDefinitionId) {
           const idsWithValues = this.data.wordDefinitions.filter(d => d.id).map(d => d.id);
           this.data.nextDefinitionId = idsWithValues.length > 0
+            ? idsWithValues.reduce((max, id) => id > max ? id : max, 0) + 1
+            : 1;
+        }
+        // Ensure SRS items array exists for backwards compatibility
+        if (!this.data.srsItems) {
+          this.data.srsItems = [];
+        }
+        // Ensure ID counter exists for SRS items
+        if (!this.data.nextSrsItemId) {
+          const idsWithValues = this.data.srsItems.filter(s => s.id).map(s => s.id);
+          this.data.nextSrsItemId = idsWithValues.length > 0
             ? idsWithValues.reduce((max, id) => id > max ? id : max, 0) + 1
             : 1;
         }
@@ -234,6 +247,233 @@ class Database {
         definition.definition
       );
     }
+  }
+
+  // ========================================
+  // SM-2 Spaced Repetition System Methods
+  // ========================================
+
+  /**
+   * Calculate next review using SM-2 algorithm
+   * @param {number} quality - Quality rating (1-5): 1=Again, 3=Hard, 4=Good, 5=Easy
+   * @param {object} item - Current SRS item with easeFactor, interval, repetitions
+   * @returns {object} Updated values: easeFactor, interval, repetitions, nextReviewDate
+   */
+  calculateSM2(quality, item) {
+    // quality: 1-5 (1=Again/forgot, 3=Hard, 4=Good, 5=Easy/perfect)
+    
+    if (quality < 3) {
+      // Reset on failure (Again or rating below Hard)
+      return {
+        repetitions: 0,
+        interval: 1,
+        easeFactor: Math.max(1.3, item.easeFactor - 0.2),
+        nextReviewDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString()
+      };
+    }
+    
+    // Calculate new ease factor
+    const newEF = Math.max(1.3, 
+      item.easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
+    );
+    
+    // Calculate new interval
+    let newInterval;
+    if (item.repetitions === 0) {
+      newInterval = 1;
+    } else if (item.repetitions === 1) {
+      newInterval = 6;
+    } else {
+      newInterval = Math.round(item.interval * newEF);
+    }
+    
+    return {
+      repetitions: item.repetitions + 1,
+      interval: newInterval,
+      easeFactor: newEF,
+      nextReviewDate: new Date(Date.now() + newInterval * 24 * 60 * 60 * 1000).toISOString()
+    };
+  }
+
+  /**
+   * Get or create an SRS item for a letter-word-position combination
+   */
+  async getOrCreateSrsItem(letter, word, position) {
+    // Find existing item
+    const existing = this.data.srsItems.find(
+      item => item.letter === letter && 
+              item.word === word && 
+              item.position === position
+    );
+    
+    if (existing) {
+      return existing;
+    }
+    
+    // Create new item with initial values
+    const newItem = {
+      id: this.data.nextSrsItemId++,
+      letter,
+      word,
+      position,
+      easeFactor: 2.5,
+      interval: 0,
+      repetitions: 0,
+      nextReviewDate: new Date().toISOString(),
+      lastReviewDate: null,
+      createdAt: new Date().toISOString()
+    };
+    
+    this.data.srsItems.push(newItem);
+    await this.save();
+    
+    return newItem;
+  }
+
+  /**
+   * Update SRS item after review
+   */
+  async updateSrsItem(itemId, quality, responseTime = null) {
+    const item = this.data.srsItems.find(i => i.id === itemId);
+    if (!item) {
+      throw new Error(`SRS item ${itemId} not found`);
+    }
+    
+    // Calculate new values using SM-2
+    const updates = this.calculateSM2(quality, item);
+    
+    // Update the item
+    Object.assign(item, updates);
+    item.lastReviewDate = new Date().toISOString();
+    if (responseTime !== null) {
+      item.lastResponseTime = responseTime;
+    }
+    
+    await this.save();
+    return item;
+  }
+
+  /**
+   * Get all items due for review
+   */
+  async getDueItems() {
+    const now = new Date().toISOString();
+    return this.data.srsItems.filter(item => item.nextReviewDate <= now);
+  }
+
+  /**
+   * Get count of items due for review
+   */
+  async getDueCount() {
+    const dueItems = await this.getDueItems();
+    return dueItems.length;
+  }
+
+  /**
+   * Get new items (never reviewed)
+   */
+  async getNewItems(limit = 5) {
+    return this.data.srsItems
+      .filter(item => item.repetitions === 0 && item.lastReviewDate === null)
+      .slice(0, limit);
+  }
+
+  /**
+   * Get SRS statistics distribution
+   */
+  async getSrsStats() {
+    const stats = {
+      new: 0,        // 0 reviews
+      learning: 0,   // < 21 day interval
+      young: 0,      // 21-60 day interval
+      mature: 0,     // > 60 day interval
+      total: this.data.srsItems.length
+    };
+    
+    this.data.srsItems.forEach(item => {
+      if (item.repetitions === 0) {
+        stats.new++;
+      } else if (item.interval < 21) {
+        stats.learning++;
+      } else if (item.interval <= 60) {
+        stats.young++;
+      } else {
+        stats.mature++;
+      }
+    });
+    
+    return stats;
+  }
+
+  /**
+   * Migrate existing letter mistakes to SRS items
+   * Creates SRS items based on historical mistake data
+   */
+  async migrateLetterMistakesToSrs() {
+    // Check if migration has already been done
+    if (this.data.srsItems.length > 0) {
+      console.log('SRS items already exist, skipping migration');
+      return;
+    }
+    
+    // Group mistakes by letter-word-position
+    const mistakeGroups = {};
+    
+    this.data.letterMistakes.forEach(mistake => {
+      const key = `${mistake.letter}:${mistake.word}:${mistake.position}`;
+      if (!mistakeGroups[key]) {
+        mistakeGroups[key] = {
+          letter: mistake.letter,
+          word: mistake.word,
+          position: mistake.position,
+          count: 0,
+          lastMistake: mistake.lastMistake
+        };
+      }
+      mistakeGroups[key].count++;
+      if (mistake.lastMistake > mistakeGroups[key].lastMistake) {
+        mistakeGroups[key].lastMistake = mistake.lastMistake;
+      }
+    });
+    
+    // Create SRS items from mistake groups
+    for (const key in mistakeGroups) {
+      const group = mistakeGroups[key];
+      
+      // Calculate initial ease factor based on historical accuracy
+      // More mistakes = lower ease factor
+      const errorRate = Math.min(group.count / 10, 1); // Normalize to 0-1
+      const basedOnErrors = 2.5 - (errorRate * 0.8); // Range: 1.7 - 2.5
+      const easeFactor = Math.max(1.3, basedOnErrors);
+      
+      // Calculate initial interval based on time since last mistake
+      const daysSinceLastMistake = (Date.now() - new Date(group.lastMistake).getTime()) / (24 * 60 * 60 * 1000);
+      let interval = 1;
+      let repetitions = 0;
+      
+      if (daysSinceLastMistake > 7) {
+        interval = 6;
+        repetitions = 1;
+      }
+      
+      const srsItem = {
+        id: this.data.nextSrsItemId++,
+        letter: group.letter,
+        word: group.word,
+        position: group.position,
+        easeFactor,
+        interval,
+        repetitions,
+        nextReviewDate: new Date().toISOString(), // Due now for review
+        lastReviewDate: group.lastMistake,
+        createdAt: new Date().toISOString()
+      };
+      
+      this.data.srsItems.push(srsItem);
+    }
+    
+    await this.save();
+    console.log(`Migrated ${this.data.srsItems.length} items to SRS system`);
   }
 
   async close() {
