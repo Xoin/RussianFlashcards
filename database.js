@@ -525,16 +525,28 @@ class Database {
       
       // Skip header line
       for (let i = 1; i < lines.length; i++) {
-        const [rank, word, frequency_per_million, cefr_level] = lines[i].split(',');
+        const parts = lines[i].split(',');
+        if (parts.length < 4) {
+          console.warn(`Skipping invalid line ${i}: ${lines[i]}`);
+          continue;
+        }
+        
+        const [rank, word, frequency_per_million, cefr_level] = parts;
+        
+        // Validate data
+        if (!word || !rank || !cefr_level) {
+          console.warn(`Skipping invalid data at line ${i}`);
+          continue;
+        }
         
         // Check if word already exists
         const existingIndex = this.data.frequencyWords.findIndex(w => w.word === word);
         
         const wordData = {
-          word,
+          word: word.trim(),
           frequency_rank: parseInt(rank),
           frequency_per_million: parseFloat(frequency_per_million),
-          cefr_level
+          cefr_level: cefr_level.trim()
         };
         
         if (existingIndex >= 0) {
@@ -595,8 +607,8 @@ class Database {
       
       // Sort: words with problematic letters first, then by frequency
       availableWords.sort((a, b) => {
-        const aHasProblematic = Array.from(a.word).some(l => problematicLetterSet.has(l));
-        const bHasProblematic = Array.from(b.word).some(l => problematicLetterSet.has(l));
+        const aHasProblematic = [...a.word].some(l => problematicLetterSet.has(l));
+        const bHasProblematic = [...b.word].some(l => problematicLetterSet.has(l));
         
         if (aHasProblematic && !bHasProblematic) return -1;
         if (!aHasProblematic && bHasProblematic) return 1;

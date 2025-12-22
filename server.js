@@ -96,8 +96,9 @@ const server = http.createServer(async (req, res) => {
             lessonLength - lessonWords.length,
             true
           );
-          // Filter out words already in lesson
-          const newWords = additionalWords.filter(w => !lessonWords.includes(w));
+          // Filter out words already in lesson (use Set for O(n) performance)
+          const lessonWordsSet = new Set(lessonWords);
+          const newWords = additionalWords.filter(w => !lessonWordsSet.has(w));
           lessonWords = [...lessonWords, ...newWords];
         } else {
           const problematicLetters = await db.getProblematicLetters(5);
