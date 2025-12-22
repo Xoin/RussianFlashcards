@@ -11,6 +11,14 @@ class Database {
       sentences: [],
       wordDefinitions: [],
       srsItems: [],
+      frequencyWords: [],
+      userLevel: {
+        current_level: 'A1',
+        words_mastered: 0,
+        level_progress: 0,
+        estimated_vocabulary: 0,
+        auto_progress: true
+      },
       nextMistakeId: 1,
       nextProgressId: 1,
       nextSentenceId: 1,
@@ -72,6 +80,20 @@ class Database {
           this.data.nextSrsItemId = idsWithValues.length > 0
             ? idsWithValues.reduce((max, id) => id > max ? id : max, 0) + 1
             : 1;
+        }
+        // Ensure frequency words array exists for backwards compatibility
+        if (!this.data.frequencyWords) {
+          this.data.frequencyWords = [];
+        }
+        // Ensure user level tracking exists for backwards compatibility
+        if (!this.data.userLevel) {
+          this.data.userLevel = {
+            current_level: 'A1',
+            words_mastered: 0,
+            level_progress: 0,
+            estimated_vocabulary: 0,
+            auto_progress: true
+          };
         }
       } else {
         await this.save();
@@ -487,6 +509,213 @@ class Database {
     
     await this.save();
     console.log(`Migrated ${this.data.srsItems.length} items to SRS system`);
+  }
+
+  // ========================================
+  // Word Frequency & CEFR Level Methods
+  // ========================================
+
+  /**
+   * Load frequency data from CSV file
+   */
+  async loadFrequencyData(csvPath = './data/frequency-list-1000.csv') {
+    try {
+      const csvContent = await fs.readFile(csvPath, 'utf-8');
+      const lines = csvContent.trim().split('\n');
+      
+      // Skip header line
+      for (let i = 1; i < lines.length; i++) {
+        const [rank, word, frequency_per_million, cefr_level] = lines[i].split(',');
+        
+        // Check if word already exists
+        const existingIndex = this.data.frequencyWords.findIndex(w => w.word === word);
+        
+        const wordData = {
+          word,
+          frequency_rank: parseInt(rank),
+          frequency_per_million: parseFloat(frequency_per_million),
+          cefr_level
+        };
+        
+        if (existingIndex >= 0) {
+          this.data.frequencyWords[existingIndex] = wordData;
+        } else {
+          this.data.frequencyWords.push(wordData);
+        }
+      }
+      
+      await this.save();
+      console.log(`Loaded ${this.data.frequencyWords.length} frequency words`);
+    } catch (err) {
+      console.error('Error loading frequency data:', err);
+    }
+  }
+
+  /**
+   * Get words by CEFR level
+   */
+  async getWordsByLevel(level, limit = null) {
+    const words = this.data.frequencyWords.filter(w => w.cefr_level === level);
+    words.sort((a, b) => a.frequency_rank - b.frequency_rank);
+    return limit ? words.slice(0, limit) : words;
+  }
+
+  /**
+   * Get word frequency data
+   */
+  async getWordFrequency(word) {
+    return this.data.frequencyWords.find(w => w.word.toLowerCase() === word.toLowerCase());
+  }
+
+  /**
+   * Select words based on user level and frequency
+   */
+  async selectWordsByLevel(userLevel, count = 10, prioritizeProblematic = true) {
+    const levelRanges = {
+      'A1': { min: 1, max: 256 },
+      'A2': { min: 257, max: 450 },
+      'B1': { min: 451, max: 658 },
+      'B2': { min: 659, max: 769 },
+      'C1': { min: 770, max: 867 },
+      'C2': { min: 868, max: 1000 }
+    };
+
+    const range = levelRanges[userLevel] || levelRanges['A1'];
+    
+    // Get words in frequency range
+    let availableWords = this.data.frequencyWords.filter(w => 
+      w.frequency_rank >= range.min && 
+      w.frequency_rank <= range.max
+    );
+
+    // If prioritize problematic letters, get them
+    if (prioritizeProblematic) {
+      const problematicLetters = await this.getProblematicLetters(5);
+      const problematicLetterSet = new Set(problematicLetters.map(l => l.letter));
+      
+      // Sort: words with problematic letters first, then by frequency
+      availableWords.sort((a, b) => {
+        const aHasProblematic = Array.from(a.word).some(l => problematicLetterSet.has(l));
+        const bHasProblematic = Array.from(b.word).some(l => problematicLetterSet.has(l));
+        
+        if (aHasProblematic && !bHasProblematic) return -1;
+        if (!aHasProblematic && bHasProblematic) return 1;
+        
+        return a.frequency_rank - b.frequency_rank;
+      });
+    } else {
+      availableWords.sort((a, b) => a.frequency_rank - b.frequency_rank);
+    }
+    
+    return availableWords.slice(0, count).map(w => w.word);
+  }
+
+  /**
+   * Get user level information
+   */
+  async getUserLevel() {
+    return this.data.userLevel;
+  }
+
+  /**
+   * Update user level
+   */
+  async updateUserLevel(level) {
+    const validLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+    if (!validLevels.includes(level)) {
+      throw new Error(`Invalid level: ${level}`);
+    }
+    
+    this.data.userLevel.current_level = level;
+    await this.save();
+    return this.data.userLevel;
+  }
+
+  /**
+   * Update user level settings
+   */
+  async updateUserLevelSettings(settings) {
+    if (settings.auto_progress !== undefined) {
+      this.data.userLevel.auto_progress = settings.auto_progress;
+    }
+    if (settings.current_level !== undefined) {
+      const validLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+      if (validLevels.includes(settings.current_level)) {
+        this.data.userLevel.current_level = settings.current_level;
+      }
+    }
+    await this.save();
+    return this.data.userLevel;
+  }
+
+  /**
+   * Get vocabulary distribution by CEFR level
+   */
+  async getVocabularyDistribution() {
+    const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+    const distribution = {};
+    
+    for (const level of levels) {
+      const levelWords = await this.getWordsByLevel(level);
+      const totalInLevel = levelWords.length;
+      
+      // Count mastered words (those with SRS items in mature stage)
+      const masteredCount = this.data.srsItems.filter(item => {
+        const wordFreq = this.data.frequencyWords.find(w => w.word === item.word);
+        return wordFreq && wordFreq.cefr_level === level && item.repetitions > 0;
+      }).length;
+      
+      distribution[level] = {
+        total: totalInLevel,
+        mastered: masteredCount,
+        percentage: totalInLevel > 0 ? Math.round((masteredCount / totalInLevel) * 100) : 0
+      };
+    }
+    
+    return distribution;
+  }
+
+  /**
+   * Check and update level progression
+   */
+  async checkLevelProgression() {
+    if (!this.data.userLevel.auto_progress) {
+      return null;
+    }
+
+    const currentLevel = this.data.userLevel.current_level;
+    const distribution = await this.getVocabularyDistribution();
+    const currentLevelData = distribution[currentLevel];
+    
+    // If 80% of current level mastered, advance
+    if (currentLevelData && currentLevelData.percentage >= 80) {
+      const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+      const currentIndex = levels.indexOf(currentLevel);
+      
+      if (currentIndex < levels.length - 1) {
+        const nextLevel = levels[currentIndex + 1];
+        this.data.userLevel.current_level = nextLevel;
+        this.data.userLevel.level_progress = 0;
+        await this.save();
+        
+        return {
+          advanced: true,
+          from: currentLevel,
+          to: nextLevel
+        };
+      }
+    }
+    
+    // Update progress
+    this.data.userLevel.level_progress = currentLevelData ? currentLevelData.percentage / 100 : 0;
+    this.data.userLevel.words_mastered = currentLevelData ? currentLevelData.mastered : 0;
+    this.data.userLevel.estimated_vocabulary = this.data.srsItems.filter(item => item.repetitions > 0).length;
+    await this.save();
+    
+    return {
+      advanced: false,
+      progress: this.data.userLevel.level_progress
+    };
   }
 
   async close() {

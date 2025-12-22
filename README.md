@@ -1,11 +1,13 @@
 # Flashcards
 
-A flashcard application for learning Russian letters and simple words with intelligent progress tracking, spaced repetition, and contextual learning.
+A flashcard application for learning Russian letters and simple words with intelligent progress tracking, spaced repetition, contextual learning, and word frequency-based selection.
 
 ## Features
 
 - **Letter Fill-in Exercises**: Practice Russian letters by filling in missing letters in simple words
 - **Sentence Completion Exercises**: Learn words in context by completing Russian sentences
+- **Word Frequency-Based Selection**: Learn high-frequency words first for faster practical communication
+- **CEFR Level Tracking**: Progress through standardized language levels (A1-C2)
 - **SM-2 Spaced Repetition System**: Optimized review scheduling based on memory strength for long-term retention
 - **Contextual Learning**: See example sentences and definitions after each exercise to improve retention
 - **Audio Pronunciation**: Listen to Russian word pronunciation with text-to-speech support
@@ -13,6 +15,29 @@ A flashcard application for learning Russian letters and simple words with intel
 - **Adaptive Lesson Length**: Lessons get shorter when you make many errors, longer when you're doing well
 - **LM Studio Integration**: Optionally uses LM Studio to generate contextual sentences and lessons
 - **No External Dependencies**: Built using only Node.js built-in modules
+
+### Word Frequency-Based Learning
+
+The application prioritizes high-frequency words based on Russian word frequency lists, allowing beginners to achieve practical communication ability faster. Research shows that the most common 1,000 words account for approximately 80% of everyday conversation.
+
+**Key Features:**
+- **CEFR Level System**: Words are organized by internationally recognized levels:
+  - **A1 (Beginner)**: 297 most frequent words - Basic everyday expressions
+  - **A2 (Elementary)**: 276 words - Common phrases and routine tasks
+  - **B1 (Intermediate)**: 208 words - Work, school, leisure topics
+  - **B2 (Upper Intermediate)**: 110 words - Complex topics and abstract concepts
+  - **C1 (Advanced)**: 98 words - Demanding topics and nuanced expression
+  - **C2 (Mastery)**: 133 words - Native-like proficiency
+
+- **Automatic Level Progression**: Advances to the next level when 80% of current level words are mastered
+- **Manual Level Selection**: Choose your starting level based on your knowledge
+- **Vocabulary Statistics**: Track your progress across all CEFR levels
+- **Smart Word Selection**: Prioritizes high-frequency words while still focusing on your problematic letters
+
+**Research Backing:**
+- JSTOR: Word frequency is a strong predictor of vocabulary acquisition
+- Reading Matrix (2024): High-frequency words provide greater communicative value
+- CEFR Framework: Standardized levels used across European language education
 
 ### SM-2 Spaced Repetition System
 
@@ -94,17 +119,21 @@ http://localhost:3000
 
 ### First Time Setup
 
-If this is your first time running the application, you may want to load the initial content database:
+If this is your first time running the application, you should load the initial content database:
 
 ```bash
 node migrate.js
+node migrate-frequency.js
 ```
 
 This will import:
 - 58 word definitions with translations and grammatical information
 - 171 example sentences to provide contextual learning
+- 989 frequency-ranked words with CEFR level classifications
 
-The migration script will only run once - it skips if data already exists.
+The migration scripts will only run once - they skip if data already exists.
+
+**Note**: The frequency data is essential for the word frequency-based selection feature. Running `migrate-frequency.js` will load approximately 1,000 words ranked by frequency and tagged with CEFR levels.
 
 ## Optional: LM Studio Integration
 
@@ -163,7 +192,7 @@ To access audio settings:
 
 ## Data Storage
 
-User progress, mistakes, SRS items, word definitions, and example sentences are stored in `flashcards.json` in the project directory. This file is automatically created on first run and includes:
+User progress, mistakes, SRS items, word definitions, example sentences, and frequency data are stored in `flashcards.json` in the project directory. This file is automatically created on first run and includes:
 
 - Letter mistakes tracking (legacy)
 - SRS items with individual review schedules
@@ -171,13 +200,15 @@ User progress, mistakes, SRS items, word definitions, and example sentences are 
 - Audio settings preferences
 - Word definitions database
 - Example sentences database
+- Frequency-ranked words with CEFR levels
+- User level tracking and progression
 
 ## API Endpoints
 
 The application provides several REST API endpoints:
 
 ### Lessons
-- `GET /api/lesson` - Get a new lesson with SRS-based word selection (prioritizes due items)
+- `GET /api/lesson` - Get a new lesson with frequency-based and SRS-based word selection (prioritizes due items and high-frequency words)
 
 ### SRS (Spaced Repetition)
 - `POST /api/review` - Submit a review rating for an item
@@ -193,6 +224,13 @@ The application provides several REST API endpoints:
 ### Settings
 - `GET /api/settings` - Get user settings
 - `POST /api/settings` - Save user settings
+
+### User Level & Frequency
+- `GET /api/user/level` - Get user level information and vocabulary distribution
+- `POST /api/user/level` - Update user level
+  - Body: `{ level: 'A1'|'A2'|'B1'|'B2'|'C1'|'C2' }` or `{ auto_progress: boolean }`
+- `GET /api/words/level/:level` - Get words for a specific CEFR level
+- `GET /api/statistics/vocabulary-distribution` - Get vocabulary distribution across all levels
 
 ### Contextual Learning
 - `GET /api/word/:word/definition` - Get word definition and translation

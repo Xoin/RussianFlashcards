@@ -47,6 +47,9 @@ const server = http.createServer(async (req, res) => {
         ? progress.incorrect / progress.total 
         : 0;
       
+      // Get user level
+      const userLevel = await db.getUserLevel();
+      
       // Get due items for review (prioritized)
       const dueItems = await db.getDueItems();
       
@@ -63,32 +66,56 @@ const server = http.createServer(async (req, res) => {
       let lessonWords = [...srsWords];
       
       if (lessonWords.length === 0) {
-        // No SRS items yet, use traditional lesson generation
-        const problematicLetters = await db.getProblematicLetters(5);
-        const lesson = await lmStudio.generateLesson(errorRate, problematicLetters);
-        
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(lesson));
-        return;
+        // No SRS items yet, use frequency-based word selection if available
+        if (db.data.frequencyWords && db.data.frequencyWords.length > 0) {
+          const frequencyWords = await db.selectWordsByLevel(
+            userLevel.current_level, 
+            10, 
+            true // prioritize problematic letters
+          );
+          lessonWords = frequencyWords;
+        } else {
+          // Fall back to traditional lesson generation
+          const problematicLetters = await db.getProblematicLetters(5);
+          const lesson = await lmStudio.generateLesson(errorRate, problematicLetters);
+          
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(lesson));
+          return;
+        }
       }
       
       // Determine lesson length based on error rate
       const lessonLength = lmStudio.calculateLessonLength(errorRate);
       
-      // If we need more words, generate additional ones
+      // If we need more words, use frequency-based selection or generate
       if (lessonWords.length < lessonLength) {
-        const problematicLetters = await db.getProblematicLetters(5);
-        const focusLetters = problematicLetters.slice(0, 3).map(l => l.letter);
-        const additionalWords = await lmStudio.generateWords(
-          lessonLength - lessonWords.length, 
-          focusLetters, 
-          errorRate
-        );
-        lessonWords = [...lessonWords, ...additionalWords];
+        if (db.data.frequencyWords && db.data.frequencyWords.length > 0) {
+          const additionalWords = await db.selectWordsByLevel(
+            userLevel.current_level,
+            lessonLength - lessonWords.length,
+            true
+          );
+          // Filter out words already in lesson
+          const newWords = additionalWords.filter(w => !lessonWords.includes(w));
+          lessonWords = [...lessonWords, ...newWords];
+        } else {
+          const problematicLetters = await db.getProblematicLetters(5);
+          const focusLetters = problematicLetters.slice(0, 3).map(l => l.letter);
+          const additionalWords = await lmStudio.generateWords(
+            lessonLength - lessonWords.length, 
+            focusLetters, 
+            errorRate
+          );
+          lessonWords = [...lessonWords, ...additionalWords];
+        }
       }
       
       // Limit to lesson length
       lessonWords = lessonWords.slice(0, lessonLength);
+      
+      // Check for level progression
+      await db.checkLevelProgression();
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
@@ -96,7 +123,8 @@ const server = http.createServer(async (req, res) => {
         length: lessonWords.length,
         dueCount: dueItems.length,
         newCount: newItems.length,
-        srsItems: srsItems
+        srsItems: srsItems,
+        userLevel: userLevel
       }));
     } catch (err) {
       console.error('Error generating lesson:', err);
@@ -427,6 +455,99 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ error: 'Failed to generate sentence' }));
       }
     });
+    return;
+  }
+
+  // Get user level information
+  if (pathname === '/api/user/level' && req.method === 'GET') {
+    try {
+      const userLevel = await db.getUserLevel();
+      const distribution = await db.getVocabularyDistribution();
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ userLevel, distribution }));
+    } catch (err) {
+      console.error('Error fetching user level:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to fetch user level' }));
+    }
+    return;
+  }
+
+  // Update user level
+  if (pathname === '/api/user/level' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        
+        // Validate level parameter
+        const validLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+        if (data.level && !validLevels.includes(data.level)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid level' }));
+          return;
+        }
+        
+        let userLevel;
+        if (data.level) {
+          userLevel = await db.updateUserLevel(data.level);
+        } else {
+          userLevel = await db.updateUserLevelSettings(data);
+        }
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, userLevel }));
+      } catch (err) {
+        console.error('Error updating user level:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to update user level' }));
+      }
+    });
+    return;
+  }
+
+  // Get words by level
+  if (pathname.startsWith('/api/words/level/') && req.method === 'GET') {
+    try {
+      const level = pathname.split('/')[4];
+      
+      // Validate level parameter
+      const validLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+      if (!validLevels.includes(level)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid level' }));
+        return;
+      }
+      
+      const words = await db.getWordsByLevel(level);
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ level, words }));
+    } catch (err) {
+      console.error('Error fetching words by level:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to fetch words by level' }));
+    }
+    return;
+  }
+
+  // Get vocabulary distribution statistics
+  if (pathname === '/api/statistics/vocabulary-distribution' && req.method === 'GET') {
+    try {
+      const distribution = await db.getVocabularyDistribution();
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ distribution }));
+    } catch (err) {
+      console.error('Error fetching vocabulary distribution:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to fetch vocabulary distribution' }));
+    }
     return;
   }
 

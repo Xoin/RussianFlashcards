@@ -921,3 +921,146 @@ footer {
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
+/* ========================================
+   Word Frequency & CEFR Level Styles
+   ======================================== */
+
+.user-level-indicator {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.level-badge-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.level-badge {
+    background: white;
+    color: #667eea;
+    font-weight: bold;
+    font-size: 1.2em;
+    padding: 8px 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.level-description {
+    font-size: 1em;
+    font-weight: 500;
+}
+
+.level-progress-container {
+    flex: 1;
+    margin-left: 20px;
+    max-width: 300px;
+}
+
+.progress-bar-bg {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    height: 20px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+
+.progress-bar-fill {
+    background: white;
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.progress-text {
+    font-size: 0.85em;
+    opacity: 0.9;
+}
+
+.vocabulary-stats {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.vocab-level-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+
+.vocab-level-label {
+    font-weight: 500;
+    color: #333;
+}
+
+.vocab-level-count {
+    font-weight: bold;
+    color: #667eea;
+}
+
+.word-frequency-badge {
+    display: inline-block;
+    font-size: 0.8em;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-left: 8px;
+    font-weight: bold;
+}
+
+.freq-badge-a1 {
+    background: #28a745;
+    color: white;
+}
+
+.freq-badge-a2 {
+    background: #17a2b8;
+    color: white;
+}
+
+.freq-badge-b1 {
+    background: #ffc107;
+    color: #333;
+}
+
+.freq-badge-b2 {
+    background: #fd7e14;
+    color: white;
+}
+
+.freq-badge-c1 {
+    background: #dc3545;
+    color: white;
+}
+
+.freq-badge-c2 {
+    background: #6f42c1;
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .user-level-indicator {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .level-progress-container {
+        width: 100%;
+        max-width: none;
+        margin-left: 0;
+    }
+}
