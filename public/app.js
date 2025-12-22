@@ -111,15 +111,18 @@ class FlashcardApp {
 
     this.currentWord = this.currentLesson.words[this.currentWordIndex];
     
-    // Choose a random position to blank out (but not first or last letter for simplicity)
+    // Choose a random position to blank out
     const wordLength = this.currentWord.length;
-    if (wordLength <= 2) {
-      // For very short words, pick any position
-      this.blankPosition = Math.floor(Math.random() * wordLength);
+    if (wordLength === 1) {
+      // Only one option for single letter words
+      this.blankPosition = 0;
+    } else if (wordLength === 2) {
+      // For 2-letter words, pick either position
+      this.blankPosition = Math.floor(Math.random() * 2);
     } else {
-      // For longer words, avoid first and last positions
-      const minPos = Math.min(1, Math.floor(wordLength / 3));
-      const maxPos = Math.max(minPos + 1, wordLength - 1);
+      // For longer words (3+), avoid first and last positions
+      const minPos = 1;
+      const maxPos = wordLength - 1;
       this.blankPosition = Math.floor(Math.random() * (maxPos - minPos)) + minPos;
     }
     

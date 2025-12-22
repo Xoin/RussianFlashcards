@@ -20,10 +20,14 @@ class Database {
         this.data = JSON.parse(content);
         // Ensure ID counters exist for backwards compatibility
         if (!this.data.nextMistakeId) {
-          this.data.nextMistakeId = Math.max(0, ...this.data.letterMistakes.map(m => m.id)) + 1;
+          this.data.nextMistakeId = this.data.letterMistakes.length > 0
+            ? Math.max(...this.data.letterMistakes.map(m => m.id)) + 1
+            : 1;
         }
         if (!this.data.nextProgressId) {
-          this.data.nextProgressId = Math.max(0, ...this.data.userProgress.map(p => p.id)) + 1;
+          this.data.nextProgressId = this.data.userProgress.length > 0
+            ? Math.max(...this.data.userProgress.map(p => p.id)) + 1
+            : 1;
         }
       } else {
         await this.save();
