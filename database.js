@@ -7,6 +7,7 @@ class Database {
     this.data = {
       letterMistakes: [],
       userProgress: [],
+      settings: {},
       nextMistakeId: 1,
       nextProgressId: 1
     };
@@ -115,6 +116,15 @@ class Database {
       acc.incorrect += session.incorrectAnswers;
       return acc;
     }, { total: 0, correct: 0, incorrect: 0 });
+  }
+
+  async getSettings() {
+    return this.data.settings || {};
+  }
+
+  async saveSettings(settings) {
+    this.data.settings = settings;
+    await this.save();
   }
 
   async close() {

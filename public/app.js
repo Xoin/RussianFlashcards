@@ -9,8 +9,21 @@ class FlashcardApp {
     this.sessionIncorrect = 0;
     this.wrongLettersThisWord = new Set(); // Track wrong letters for current word
     
+    // Audio settings
+    this.audioSettings = {
+      enabled: true,
+      autoplay: false,
+      rate: 0.8,
+      voiceIndex: 0,
+      volume: 1.0
+    };
+    this.russianVoices = [];
+    this.isPlaying = false;
+    
     this.initElements();
     this.attachEventListeners();
+    this.initAudio();
+    this.loadSettings();
     this.loadLesson();
     this.loadStatistics();
   }
@@ -34,7 +47,15 @@ class FlashcardApp {
       incorrectAnswers: document.getElementById('incorrect-answers'),
       accuracy: document.getElementById('accuracy'),
       mistakeList: document.getElementById('mistake-list'),
-      russianKeyboard: document.getElementById('russian-keyboard')
+      russianKeyboard: document.getElementById('russian-keyboard'),
+      settingsToggleBtn: document.getElementById('settings-toggle-btn'),
+      settingsPanel: document.getElementById('settings-panel'),
+      audioEnabled: document.getElementById('audio-enabled'),
+      audioAutoplay: document.getElementById('audio-autoplay'),
+      audioRate: document.getElementById('audio-rate'),
+      rateValue: document.getElementById('rate-value'),
+      audioVoice: document.getElementById('audio-voice'),
+      testAudioBtn: document.getElementById('test-audio-btn')
     };
     
     this.russianLetters = [
@@ -58,6 +79,51 @@ class FlashcardApp {
     // Auto-focus input when typing
     this.elements.letterInput.addEventListener('input', (e) => {
       e.target.value = e.target.value.toLowerCase();
+    });
+    
+    // Keyboard shortcut for audio (Space bar)
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+        e.preventDefault();
+        if (this.currentWord) {
+          this.speakWord(this.currentWord);
+        }
+      }
+    });
+    
+    // Settings panel
+    this.elements.settingsToggleBtn.addEventListener('click', () => {
+      const isVisible = this.elements.settingsPanel.style.display !== 'none';
+      this.elements.settingsPanel.style.display = isVisible ? 'none' : 'block';
+    });
+    
+    this.elements.audioEnabled.addEventListener('change', (e) => {
+      this.audioSettings.enabled = e.target.checked;
+      this.saveSettings();
+      // Re-render word to show/hide audio button
+      if (this.currentWord) {
+        this.renderWord();
+      }
+    });
+    
+    this.elements.audioAutoplay.addEventListener('change', (e) => {
+      this.audioSettings.autoplay = e.target.checked;
+      this.saveSettings();
+    });
+    
+    this.elements.audioRate.addEventListener('input', (e) => {
+      this.audioSettings.rate = parseFloat(e.target.value);
+      this.elements.rateValue.textContent = this.audioSettings.rate.toFixed(1);
+      this.saveSettings();
+    });
+    
+    this.elements.audioVoice.addEventListener('change', (e) => {
+      this.audioSettings.voiceIndex = parseInt(e.target.value);
+      this.saveSettings();
+    });
+    
+    this.elements.testAudioBtn.addEventListener('click', () => {
+      this.speakWord('привет');
     });
     
     // Initialize keyboard
@@ -196,10 +262,20 @@ class FlashcardApp {
     this.updateStats();
     this.updateKeyboard();
     this.showFlashcard();
+    
+    // Autoplay audio if enabled
+    if (this.audioSettings.autoplay && this.audioSettings.enabled) {
+      // Small delay to ensure the word is rendered
+      setTimeout(() => this.speakWord(this.currentWord), 300);
+    }
   }
 
   renderWord() {
     this.elements.wordContainer.innerHTML = '';
+    
+    // Create word display wrapper
+    const wordWrapper = document.createElement('div');
+    wordWrapper.className = 'word-wrapper';
     
     for (let i = 0; i < this.currentWord.length; i++) {
       const letterSpan = document.createElement('span');
@@ -213,7 +289,20 @@ class FlashcardApp {
         letterSpan.textContent = this.currentWord[i];
       }
       
-      this.elements.wordContainer.appendChild(letterSpan);
+      wordWrapper.appendChild(letterSpan);
+    }
+    
+    this.elements.wordContainer.appendChild(wordWrapper);
+    
+    // Add audio button
+    if (this.audioSettings.enabled && 'speechSynthesis' in window) {
+      const audioBtn = document.createElement('button');
+      audioBtn.className = 'audio-btn';
+      audioBtn.innerHTML = '🔊';
+      audioBtn.setAttribute('aria-label', 'Pronounce word');
+      audioBtn.setAttribute('title', 'Listen to pronunciation (Space)');
+      audioBtn.addEventListener('click', () => this.speakWord(this.currentWord));
+      this.elements.wordContainer.appendChild(audioBtn);
     }
     
     // Add transliteration below the word
@@ -387,6 +476,161 @@ class FlashcardApp {
 
   startNewLesson() {
     this.loadLesson();
+  }
+
+  // Audio methods
+  initAudio() {
+    if (!('speechSynthesis' in window)) {
+      console.warn('Speech Synthesis API not supported in this browser');
+      this.audioSettings.enabled = false;
+      return;
+    }
+
+    // Load available voices
+    const loadVoices = () => {
+      const voices = speechSynthesis.getVoices();
+      this.russianVoices = voices.filter(voice => voice.lang.startsWith('ru'));
+      
+      // Fallback to any voice if no Russian voices available
+      if (this.russianVoices.length === 0) {
+        console.warn('No Russian voices found, using default voice');
+        this.russianVoices = voices.length > 0 ? [voices[0]] : [];
+      }
+      
+      // Populate voice selector
+      this.populateVoiceSelector();
+    };
+
+    loadVoices();
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+      speechSynthesis.onvoiceschanged = loadVoices;
+    }
+  }
+
+  populateVoiceSelector() {
+    if (!this.elements.audioVoice) return;
+    
+    this.elements.audioVoice.innerHTML = '';
+    
+    if (this.russianVoices.length === 0) {
+      const option = document.createElement('option');
+      option.value = '0';
+      option.textContent = 'No Russian voices available';
+      this.elements.audioVoice.appendChild(option);
+      return;
+    }
+    
+    this.russianVoices.forEach((voice, index) => {
+      const option = document.createElement('option');
+      option.value = index;
+      option.textContent = `${voice.name} (${voice.lang})`;
+      this.elements.audioVoice.appendChild(option);
+    });
+    
+    // Set current selection
+    this.elements.audioVoice.value = this.audioSettings.voiceIndex;
+  }
+
+  speakWord(text) {
+    if (!this.audioSettings.enabled || !text) {
+      return;
+    }
+
+    if (!('speechSynthesis' in window)) {
+      console.warn('Speech Synthesis not available');
+      return;
+    }
+
+    // Stop any currently playing speech
+    speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ru-RU';
+    utterance.rate = this.audioSettings.rate;
+    utterance.volume = this.audioSettings.volume;
+
+    // Use selected Russian voice if available
+    if (this.russianVoices.length > 0) {
+      const voiceIndex = Math.min(this.audioSettings.voiceIndex, this.russianVoices.length - 1);
+      utterance.voice = this.russianVoices[voiceIndex];
+    }
+
+    // Visual feedback
+    utterance.onstart = () => {
+      this.isPlaying = true;
+      this.updateAudioButtonState();
+    };
+
+    utterance.onend = () => {
+      this.isPlaying = false;
+      this.updateAudioButtonState();
+    };
+
+    utterance.onerror = (event) => {
+      console.error('Speech synthesis error:', event);
+      this.isPlaying = false;
+      this.updateAudioButtonState();
+    };
+
+    speechSynthesis.speak(utterance);
+  }
+
+  updateAudioButtonState() {
+    const audioBtn = document.querySelector('.audio-btn');
+    if (audioBtn) {
+      if (this.isPlaying) {
+        audioBtn.classList.add('playing');
+      } else {
+        audioBtn.classList.remove('playing');
+      }
+    }
+  }
+
+  async loadSettings() {
+    try {
+      const response = await fetch('/api/settings');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.audio) {
+          this.audioSettings = { ...this.audioSettings, ...data.audio };
+          this.applySettingsToUI();
+        }
+      }
+    } catch (err) {
+      console.error('Error loading settings:', err);
+    }
+  }
+
+  applySettingsToUI() {
+    if (this.elements.audioEnabled) {
+      this.elements.audioEnabled.checked = this.audioSettings.enabled;
+    }
+    if (this.elements.audioAutoplay) {
+      this.elements.audioAutoplay.checked = this.audioSettings.autoplay;
+    }
+    if (this.elements.audioRate) {
+      this.elements.audioRate.value = this.audioSettings.rate;
+      this.elements.rateValue.textContent = this.audioSettings.rate.toFixed(1);
+    }
+    if (this.elements.audioVoice) {
+      this.elements.audioVoice.value = this.audioSettings.voiceIndex;
+    }
+  }
+
+  async saveSettings() {
+    try {
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          audio: this.audioSettings
+        })
+      });
+    } catch (err) {
+      console.error('Error saving settings:', err);
+    }
   }
 }
 

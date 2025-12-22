@@ -136,6 +136,40 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (pathname === '/api/settings' && req.method === 'GET') {
+    try {
+      const settings = await db.getSettings();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(settings));
+    } catch (err) {
+      console.error('Error fetching settings:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to fetch settings' }));
+    }
+    return;
+  }
+
+  if (pathname === '/api/settings' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body);
+        await db.saveSettings(data);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (err) {
+        console.error('Error saving settings:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to save settings' }));
+      }
+    });
+    return;
+  }
+
   // Static file serving
   let filePath = pathname === '/' 
     ? './public/index.html' 

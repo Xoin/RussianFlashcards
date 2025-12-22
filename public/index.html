@@ -11,7 +11,39 @@
         <header>
             <h1>Russian Letter Flashcards</h1>
             <p class="subtitle">Learn Russian letters and simple words</p>
+            <button id="settings-toggle-btn" class="settings-toggle-btn" aria-label="Toggle settings">⚙️ Settings</button>
         </header>
+
+        <div id="settings-panel" class="settings-panel" style="display: none;">
+            <h3>Audio Settings</h3>
+            <div class="setting-item">
+                <label>
+                    <input type="checkbox" id="audio-enabled" checked>
+                    Enable Audio
+                </label>
+            </div>
+            <div class="setting-item">
+                <label>
+                    <input type="checkbox" id="audio-autoplay">
+                    Autoplay on New Word
+                </label>
+            </div>
+            <div class="setting-item">
+                <label for="audio-rate">
+                    Speech Rate: <span id="rate-value">0.8</span>x
+                </label>
+                <input type="range" id="audio-rate" min="0.5" max="2.0" step="0.1" value="0.8">
+            </div>
+            <div class="setting-item">
+                <label for="audio-voice">Voice:</label>
+                <select id="audio-voice">
+                    <option value="0">Default Russian Voice</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <button id="test-audio-btn" class="btn btn-secondary">Test Audio</button>
+            </div>
+        </div>
 
         <div class="stats-bar">
             <div class="stat">
