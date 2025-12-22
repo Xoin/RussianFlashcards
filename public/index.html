@@ -87,6 +87,30 @@
 
                 <div id="feedback" class="feedback"></div>
                 
+                <!-- SRS Rating buttons (shown after answering) -->
+                <div id="rating-panel" class="rating-panel" style="display: none;">
+                    <h3>How well did you recall this?</h3>
+                    <p class="rating-instruction">Rate your memory to optimize future reviews</p>
+                    <div class="rating-buttons">
+                        <button id="rating-again" class="btn btn-rating rating-again" data-quality="1">
+                            <span class="rating-label">Again</span>
+                            <span class="rating-desc">Forgot completely</span>
+                        </button>
+                        <button id="rating-hard" class="btn btn-rating rating-hard" data-quality="3">
+                            <span class="rating-label">Hard</span>
+                            <span class="rating-desc">Recalled with difficulty</span>
+                        </button>
+                        <button id="rating-good" class="btn btn-rating rating-good" data-quality="4">
+                            <span class="rating-label">Good</span>
+                            <span class="rating-desc">Recalled with effort</span>
+                        </button>
+                        <button id="rating-easy" class="btn btn-rating rating-easy" data-quality="5">
+                            <span class="rating-label">Easy</span>
+                            <span class="rating-desc">Recalled instantly</span>
+                        </button>
+                    </div>
+                </div>
+                
                 <!-- Context panel (shown after completing an exercise) -->
                 <div id="context-panel" class="context-panel" style="display: none;">
                     <h3>Context & Meaning</h3>
@@ -111,6 +135,30 @@
                 </div>
                 <div id="sentence-feedback" class="feedback"></div>
                 
+                <!-- SRS Rating buttons for sentence exercise -->
+                <div id="sentence-rating-panel" class="rating-panel" style="display: none;">
+                    <h3>How well did you recall this?</h3>
+                    <p class="rating-instruction">Rate your memory to optimize future reviews</p>
+                    <div class="rating-buttons">
+                        <button id="sentence-rating-again" class="btn btn-rating rating-again" data-quality="1">
+                            <span class="rating-label">Again</span>
+                            <span class="rating-desc">Forgot completely</span>
+                        </button>
+                        <button id="sentence-rating-hard" class="btn btn-rating rating-hard" data-quality="3">
+                            <span class="rating-label">Hard</span>
+                            <span class="rating-desc">Recalled with difficulty</span>
+                        </button>
+                        <button id="sentence-rating-good" class="btn btn-rating rating-good" data-quality="4">
+                            <span class="rating-label">Good</span>
+                            <span class="rating-desc">Recalled with effort</span>
+                        </button>
+                        <button id="sentence-rating-easy" class="btn btn-rating rating-easy" data-quality="5">
+                            <span class="rating-label">Easy</span>
+                            <span class="rating-desc">Recalled instantly</span>
+                        </button>
+                    </div>
+                </div>
+                
                 <!-- Context panel for sentence exercise -->
                 <div id="sentence-context-panel" class="context-panel" style="display: none;">
                     <h3>Context & Meaning</h3>
@@ -130,6 +178,36 @@
                     <p>Incorrect Answers: <strong id="incorrect-answers" class="error">0</strong></p>
                     <p>Accuracy: <strong id="accuracy">0%</strong></p>
                 </div>
+                
+                <!-- SRS Statistics -->
+                <div id="srs-statistics" class="srs-statistics">
+                    <h3>Spaced Repetition Progress</h3>
+                    <div class="srs-stats-grid">
+                        <div class="srs-stat-item">
+                            <span class="srs-stat-value" id="srs-new">0</span>
+                            <span class="srs-stat-label">New</span>
+                        </div>
+                        <div class="srs-stat-item">
+                            <span class="srs-stat-value" id="srs-learning">0</span>
+                            <span class="srs-stat-label">Learning</span>
+                        </div>
+                        <div class="srs-stat-item">
+                            <span class="srs-stat-value" id="srs-young">0</span>
+                            <span class="srs-stat-label">Young</span>
+                        </div>
+                        <div class="srs-stat-item">
+                            <span class="srs-stat-value" id="srs-mature">0</span>
+                            <span class="srs-stat-label">Mature</span>
+                        </div>
+                    </div>
+                    <p class="srs-legend">
+                        <strong>New:</strong> Never reviewed • 
+                        <strong>Learning:</strong> &lt;21 days • 
+                        <strong>Young:</strong> 21-60 days • 
+                        <strong>Mature:</strong> &gt;60 days
+                    </p>
+                </div>
+                
                 <button id="new-lesson-btn" class="btn btn-primary">Start New Lesson</button>
             </div>
         </div>

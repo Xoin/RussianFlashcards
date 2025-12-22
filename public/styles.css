@@ -744,3 +744,180 @@ footer {
         padding: 20px;
     }
 }
+
+/* ========================================
+   SM-2 Spaced Repetition Styles
+   ======================================== */
+
+/* Rating Panel */
+.rating-panel {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 25px;
+    margin: 20px 0;
+    border: 2px solid #667eea;
+    text-align: center;
+}
+
+.rating-panel h3 {
+    color: #667eea;
+    margin-bottom: 10px;
+    font-size: 1.3em;
+}
+
+.rating-instruction {
+    color: #666;
+    margin-bottom: 20px;
+    font-size: 0.95em;
+}
+
+.rating-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-rating {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px 20px;
+    min-width: 140px;
+    border: 2px solid;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    background: white;
+}
+
+.btn-rating:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.btn-rating:active {
+    transform: translateY(-1px);
+}
+
+.rating-label {
+    font-size: 1.1em;
+    margin-bottom: 5px;
+}
+
+.rating-desc {
+    font-size: 0.85em;
+    font-weight: normal;
+    opacity: 0.8;
+}
+
+/* Rating button colors */
+.rating-again {
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+.rating-again:hover {
+    background: #dc3545;
+    color: white;
+}
+
+.rating-hard {
+    border-color: #ffc107;
+    color: #d39e00;
+}
+
+.rating-hard:hover {
+    background: #ffc107;
+    color: white;
+}
+
+.rating-good {
+    border-color: #28a745;
+    color: #28a745;
+}
+
+.rating-good:hover {
+    background: #28a745;
+    color: white;
+}
+
+.rating-easy {
+    border-color: #17a2b8;
+    color: #17a2b8;
+}
+
+.rating-easy:hover {
+    background: #17a2b8;
+    color: white;
+}
+
+/* SRS Statistics */
+.srs-statistics {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+    border: 2px solid #667eea;
+}
+
+.srs-statistics h3 {
+    color: #667eea;
+    margin-bottom: 15px;
+    text-align: center;
+    font-size: 1.2em;
+}
+
+.srs-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.srs-stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.srs-stat-value {
+    font-size: 2em;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 5px;
+}
+
+.srs-stat-label {
+    font-size: 0.9em;
+    color: #666;
+    font-weight: 500;
+}
+
+.srs-legend {
+    text-align: center;
+    font-size: 0.85em;
+    color: #666;
+    line-height: 1.6;
+}
+
+/* Responsive adjustments for SRS elements */
+@media (max-width: 768px) {
+    .rating-buttons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .btn-rating {
+        min-width: 100%;
+    }
+    
+    .srs-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
