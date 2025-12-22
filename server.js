@@ -158,6 +158,46 @@ const server = http.createServer(async (req, res) => {
     req.on('end', async () => {
       try {
         const data = JSON.parse(body);
+        
+        // Validate settings structure
+        if (data.audio && typeof data.audio === 'object') {
+          // Validate audio settings
+          if (data.audio.enabled !== undefined && typeof data.audio.enabled !== 'boolean') {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Invalid enabled value' }));
+            return;
+          }
+          if (data.audio.autoplay !== undefined && typeof data.audio.autoplay !== 'boolean') {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Invalid autoplay value' }));
+            return;
+          }
+          if (data.audio.rate !== undefined) {
+            const rate = parseFloat(data.audio.rate);
+            if (isNaN(rate) || rate < 0.5 || rate > 2.0) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Invalid rate value (must be 0.5-2.0)' }));
+              return;
+            }
+          }
+          if (data.audio.voiceIndex !== undefined) {
+            const voiceIndex = parseInt(data.audio.voiceIndex);
+            if (isNaN(voiceIndex) || voiceIndex < 0) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Invalid voiceIndex value' }));
+              return;
+            }
+          }
+          if (data.audio.volume !== undefined) {
+            const volume = parseFloat(data.audio.volume);
+            if (isNaN(volume) || volume < 0 || volume > 1) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Invalid volume value (must be 0-1)' }));
+              return;
+            }
+          }
+        }
+        
         await db.saveSettings(data);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));

@@ -112,14 +112,20 @@ class FlashcardApp {
     });
     
     this.elements.audioRate.addEventListener('input', (e) => {
-      this.audioSettings.rate = parseFloat(e.target.value);
-      this.elements.rateValue.textContent = this.audioSettings.rate.toFixed(1);
-      this.saveSettings();
+      const rate = parseFloat(e.target.value);
+      if (!isNaN(rate) && rate >= 0.5 && rate <= 2.0) {
+        this.audioSettings.rate = rate;
+        this.elements.rateValue.textContent = rate.toFixed(1);
+        this.saveSettings();
+      }
     });
     
     this.elements.audioVoice.addEventListener('change', (e) => {
-      this.audioSettings.voiceIndex = parseInt(e.target.value);
-      this.saveSettings();
+      const voiceIndex = parseInt(e.target.value);
+      if (!isNaN(voiceIndex) && voiceIndex >= 0) {
+        this.audioSettings.voiceIndex = voiceIndex;
+        this.saveSettings();
+      }
     });
     
     this.elements.testAudioBtn.addEventListener('click', () => {
@@ -546,12 +552,18 @@ class FlashcardApp {
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ru-RU';
-    utterance.rate = this.audioSettings.rate;
-    utterance.volume = this.audioSettings.volume;
+    
+    // Validate and clamp rate
+    const rate = Math.max(0.5, Math.min(2.0, this.audioSettings.rate));
+    utterance.rate = rate;
+    
+    // Validate and clamp volume
+    const volume = Math.max(0, Math.min(1, this.audioSettings.volume));
+    utterance.volume = volume;
 
     // Use selected Russian voice if available
     if (this.russianVoices.length > 0) {
-      const voiceIndex = Math.min(this.audioSettings.voiceIndex, this.russianVoices.length - 1);
+      const voiceIndex = Math.max(0, Math.min(this.audioSettings.voiceIndex, this.russianVoices.length - 1));
       utterance.voice = this.russianVoices[voiceIndex];
     }
 

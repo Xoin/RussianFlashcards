@@ -32,6 +32,10 @@ class Database {
             ? Math.max(...idsWithValues) + 1
             : 1;
         }
+        // Ensure settings exist for backwards compatibility
+        if (!this.data.settings) {
+          this.data.settings = {};
+        }
       } else {
         await this.save();
       }
