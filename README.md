@@ -1,17 +1,38 @@
 # Flashcards
 
-A flashcard application for learning Russian letters and simple words with intelligent progress tracking and contextual learning.
+A flashcard application for learning Russian letters and simple words with intelligent progress tracking, spaced repetition, and contextual learning.
 
 ## Features
 
 - **Letter Fill-in Exercises**: Practice Russian letters by filling in missing letters in simple words
 - **Sentence Completion Exercises**: Learn words in context by completing Russian sentences
+- **SM-2 Spaced Repetition System**: Optimized review scheduling based on memory strength for long-term retention
 - **Contextual Learning**: See example sentences and definitions after each exercise to improve retention
 - **Audio Pronunciation**: Listen to Russian word pronunciation with text-to-speech support
 - **Progress Tracking**: Automatically tracks which letters you struggle with most
 - **Adaptive Lesson Length**: Lessons get shorter when you make many errors, longer when you're doing well
 - **LM Studio Integration**: Optionally uses LM Studio to generate contextual sentences and lessons
 - **No External Dependencies**: Built using only Node.js built-in modules
+
+### SM-2 Spaced Repetition System
+
+The application now uses the proven SM-2 algorithm (SuperMemo 2) to optimize long-term retention:
+
+- **Intelligent Scheduling**: Each letter-word-position combination is tracked individually with its own review schedule
+- **Memory-Based Reviews**: Items are scheduled based on how well you remember them
+- **4-Button Rating System**: After each answer, rate your recall:
+  - **Again** (quality=1): Forgot completely - resets the item
+  - **Hard** (quality=3): Recalled with difficulty - increases interval slightly
+  - **Good** (quality=4): Recalled with effort - standard interval increase
+  - **Easy** (quality=5): Recalled instantly - larger interval increase
+- **Prioritized Reviews**: Due items appear first in lessons, ensuring you review at optimal times
+- **Progress Tracking**: See your learning progress across four stages:
+  - **New**: Items you haven't reviewed yet
+  - **Learning**: Items with intervals less than 21 days
+  - **Young**: Items with intervals between 21-60 days
+  - **Mature**: Items with intervals over 60 days
+
+Research shows that SM-2-based systems can improve long-term retention by 30-50% compared to fixed-interval review systems.
 
 ### Contextual Learning
 
@@ -103,15 +124,11 @@ If LM Studio is not available, the application will use a built-in set of Russia
 ## How It Works
 
 1. **Practice**: Fill in missing letters in Russian words or complete Russian sentences
-2. **Listen**: Click the 🔊 button to hear Russian pronunciation
-3. **Learn Context**: After each exercise, see the word's definition and example sentences
-4. **Tracking**: Every mistake is recorded and tracked
-5. **Adaptation**: The system focuses on letters you find challenging
-6. **Progressive Learning**: 
-   - High error rate (>50%): 5 words per lesson
-   - Medium error rate (30-50%): 7 words per lesson
-   - Low error rate (15-30%): 10 words per lesson
-   - Very low error rate (<15%): 12 words per lesson
+2. **Rate Your Memory**: After each answer, rate how well you recalled it (Again/Hard/Good/Easy)
+3. **Listen**: Click the 🔊 button to hear Russian pronunciation
+4. **Learn Context**: After each exercise, see the word's definition and example sentences
+5. **Spaced Repetition**: The SM-2 algorithm schedules your next review at the optimal time
+6. **Progressive Learning**: Items you struggle with appear more frequently until mastered
 
 ### Exercise Types
 
@@ -146,9 +163,10 @@ To access audio settings:
 
 ## Data Storage
 
-User progress, mistakes, word definitions, and example sentences are stored in `flashcards.json` in the project directory. This file is automatically created on first run and includes:
+User progress, mistakes, SRS items, word definitions, and example sentences are stored in `flashcards.json` in the project directory. This file is automatically created on first run and includes:
 
-- Letter mistakes tracking
+- Letter mistakes tracking (legacy)
+- SRS items with individual review schedules
 - User progress statistics  
 - Audio settings preferences
 - Word definitions database
@@ -159,7 +177,13 @@ User progress, mistakes, word definitions, and example sentences are stored in `
 The application provides several REST API endpoints:
 
 ### Lessons
-- `GET /api/lesson` - Get a new lesson with adaptive word selection
+- `GET /api/lesson` - Get a new lesson with SRS-based word selection (prioritizes due items)
+
+### SRS (Spaced Repetition)
+- `POST /api/review` - Submit a review rating for an item
+  - Body: `{ itemId, quality (1-5), responseTime (optional) }`
+- `GET /api/due-count` - Get count of items due for review
+- `GET /api/srs-stats` - Get SRS statistics (new, learning, young, mature)
 
 ### Progress & Mistakes
 - `POST /api/mistake` - Record a letter mistake

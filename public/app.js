@@ -11,6 +11,15 @@ class FlashcardApp {
     this.currentExerciseType = 'letter-fill'; // 'letter-fill' or 'sentence-completion'
     this.currentSentence = null;
     
+    // SRS-related properties
+    this.currentSrsItem = null;
+    this.answerStartTime = null;
+    this.userWasCorrect = false;
+    
+    // SRS constants
+    this.MAX_QUALITY_FOR_INCORRECT_ANSWER = 3; // Cap quality at "Hard" if answered incorrectly
+    this.SRS_INITIAL_EASE_FACTOR = 2.5;
+    
     // Exercise type distribution constants
     this.LETTER_FILL_PERCENTAGE = 0.6; // 60%
     this.SENTENCE_COMPLETION_PERCENTAGE = 0.2; // 20%
@@ -85,6 +94,22 @@ class FlashcardApp {
       sentenceContextWord: document.getElementById('sentence-context-word'),
       sentenceContextTranslation: document.getElementById('sentence-context-translation'),
       sentenceExampleSentences: document.getElementById('sentence-example-sentences'),
+      // Rating panel elements
+      ratingPanel: document.getElementById('rating-panel'),
+      ratingAgain: document.getElementById('rating-again'),
+      ratingHard: document.getElementById('rating-hard'),
+      ratingGood: document.getElementById('rating-good'),
+      ratingEasy: document.getElementById('rating-easy'),
+      sentenceRatingPanel: document.getElementById('sentence-rating-panel'),
+      sentenceRatingAgain: document.getElementById('sentence-rating-again'),
+      sentenceRatingHard: document.getElementById('sentence-rating-hard'),
+      sentenceRatingGood: document.getElementById('sentence-rating-good'),
+      sentenceRatingEasy: document.getElementById('sentence-rating-easy'),
+      // SRS statistics elements
+      srsNew: document.getElementById('srs-new'),
+      srsLearning: document.getElementById('srs-learning'),
+      srsYoung: document.getElementById('srs-young'),
+      srsMature: document.getElementById('srs-mature'),
       // Modal elements
       modalOverlay: document.getElementById('modal-overlay'),
       wordDetailsModal: document.getElementById('word-details-modal'),
@@ -187,6 +212,17 @@ class FlashcardApp {
       this.showWordDetails(this.currentWord);
     });
     
+    // Rating button event listeners
+    this.elements.ratingAgain.addEventListener('click', () => this.submitRating(1));
+    this.elements.ratingHard.addEventListener('click', () => this.submitRating(3));
+    this.elements.ratingGood.addEventListener('click', () => this.submitRating(4));
+    this.elements.ratingEasy.addEventListener('click', () => this.submitRating(5));
+    
+    this.elements.sentenceRatingAgain.addEventListener('click', () => this.submitRating(1));
+    this.elements.sentenceRatingHard.addEventListener('click', () => this.submitRating(3));
+    this.elements.sentenceRatingGood.addEventListener('click', () => this.submitRating(4));
+    this.elements.sentenceRatingEasy.addEventListener('click', () => this.submitRating(5));
+    
     // Initialize keyboard
     this.initKeyboard();
   }
@@ -272,6 +308,9 @@ class FlashcardApp {
     this.elements.incorrectAnswers.textContent = this.sessionIncorrect;
     this.elements.accuracy.textContent = accuracy + '%';
 
+    // Load and display SRS statistics
+    this.loadSrsStats();
+
     // Save progress
     this.saveProgress();
   }
@@ -333,6 +372,12 @@ class FlashcardApp {
     
     // Reset wrong letters tracking for new word
     this.wrongLettersThisWord.clear();
+    
+    // Hide rating panel
+    this.elements.ratingPanel.style.display = 'none';
+    
+    // Start timing the answer
+    this.answerStartTime = Date.now();
     
     this.renderWord();
     this.clearFeedback();
@@ -397,6 +442,12 @@ class FlashcardApp {
     this.elements.sentenceFeedback.textContent = '';
     this.elements.sentenceFeedback.className = 'feedback';
     this.elements.sentenceContextPanel.style.display = 'none';
+    
+    // Hide rating panel
+    this.elements.sentenceRatingPanel.style.display = 'none';
+    
+    // Start timing the answer
+    this.answerStartTime = Date.now();
     
     this.updateStats();
     
@@ -484,7 +535,11 @@ class FlashcardApp {
     this.elements.submitBtn.disabled = true;
     this.elements.hintBtn.disabled = true;
 
+    // Calculate response time
+    const responseTime = this.answerStartTime ? Date.now() - this.answerStartTime : null;
+
     if (userAnswer === this.correctAnswer.toLowerCase()) {
+      this.userWasCorrect = true;
       this.sessionCorrect++;
       this.showFeedback('Correct! ✓', true);
       this.revealLetter(true);
@@ -492,11 +547,13 @@ class FlashcardApp {
       // Show context panel
       await this.showContextPanel(this.currentWord);
       
-      setTimeout(() => {
-        this.currentWordIndex++;
-        this.showNextWord();
-      }, this.CORRECT_ANSWER_DELAY);
+      // Get or create SRS item for this letter-word-position combination
+      await this.getOrCreateCurrentSrsItem();
+      
+      // Show rating panel instead of auto-advancing
+      this.elements.ratingPanel.style.display = 'block';
     } else {
+      this.userWasCorrect = false;
       this.sessionIncorrect++;
       
       // Mark this letter as wrong for this word
@@ -506,16 +563,17 @@ class FlashcardApp {
       this.showFeedback(`Wrong. The correct letter is: ${this.correctAnswer}`, false);
       this.revealLetter(false);
       
-      // Record the mistake
+      // Record the mistake (legacy tracking)
       await this.recordMistake(this.correctAnswer, this.currentWord, this.blankPosition);
       
       // Show context panel
       await this.showContextPanel(this.currentWord);
       
-      setTimeout(() => {
-        this.currentWordIndex++;
-        this.showNextWord();
-      }, this.WRONG_ANSWER_DELAY);
+      // Get or create SRS item for this letter-word-position combination
+      await this.getOrCreateCurrentSrsItem();
+      
+      // Show rating panel instead of auto-advancing
+      this.elements.ratingPanel.style.display = 'block';
     }
 
     this.updateStats();
@@ -533,9 +591,13 @@ class FlashcardApp {
     this.elements.sentenceSubmitBtn.disabled = true;
     this.elements.sentenceHintBtn.disabled = true;
 
+    // Calculate response time
+    const responseTime = this.answerStartTime ? Date.now() - this.answerStartTime : null;
+
     const correctAnswer = this.currentWord.toLowerCase();
 
     if (userAnswer === correctAnswer) {
+      this.userWasCorrect = true;
       this.sessionCorrect++;
       this.showSentenceFeedback('Correct! ✓', true);
       
@@ -545,11 +607,13 @@ class FlashcardApp {
       // Show context panel
       await this.showSentenceContextPanel(this.currentWord);
       
-      setTimeout(() => {
-        this.currentWordIndex++;
-        this.showNextWord();
-      }, this.CORRECT_ANSWER_DELAY);
+      // Get or create SRS item - for sentence exercises, we'll use position 0 as a placeholder
+      await this.getOrCreateCurrentSrsItem(0);
+      
+      // Show rating panel instead of auto-advancing
+      this.elements.sentenceRatingPanel.style.display = 'block';
     } else {
+      this.userWasCorrect = false;
       this.sessionIncorrect++;
       
       this.showSentenceFeedback(`Wrong. The correct word is: ${this.currentWord}`, false);
@@ -560,10 +624,11 @@ class FlashcardApp {
       // Show context panel
       await this.showSentenceContextPanel(this.currentWord);
       
-      setTimeout(() => {
-        this.currentWordIndex++;
-        this.showNextWord();
-      }, this.WRONG_ANSWER_DELAY);
+      // Get or create SRS item - for sentence exercises, we'll use position 0 as a placeholder
+      await this.getOrCreateCurrentSrsItem(0);
+      
+      // Show rating panel instead of auto-advancing
+      this.elements.sentenceRatingPanel.style.display = 'block';
     }
 
     this.updateStats();
@@ -1023,6 +1088,153 @@ class FlashcardApp {
   closeModal() {
     this.elements.modalOverlay.classList.remove('show');
     this.elements.wordDetailsModal.classList.remove('show');
+  }
+
+  // ========================================
+  // SRS (Spaced Repetition System) Methods
+  // ========================================
+
+  createFallbackSrsItem(letter, word, position) {
+    return {
+      id: Date.now(),
+      letter,
+      word,
+      position,
+      easeFactor: this.SRS_INITIAL_EASE_FACTOR,
+      interval: 0,
+      repetitions: 0,
+      nextReviewDate: new Date().toISOString(),
+      lastReviewDate: null,
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  async getOrCreateCurrentSrsItem(positionOverride = null) {
+    try {
+      const position = positionOverride !== null ? positionOverride : this.blankPosition;
+      const letter = this.correctAnswer;
+      const word = this.currentWord;
+      
+      // Find existing SRS item from the lesson
+      const srsItems = this.currentLesson.srsItems || [];
+      const existing = srsItems.find(
+        item => item.letter === letter && 
+                item.word === word && 
+                item.position === position
+      );
+      
+      if (existing) {
+        this.currentSrsItem = existing;
+        return existing;
+      }
+      
+      // Get or create SRS item on the server
+      const response = await fetch('/api/review', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          itemId: 0, // 0 means get/create
+          letter,
+          word,
+          position
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        this.currentSrsItem = data.item;
+        return data.item;
+      }
+      
+      // Fallback: create a temporary item
+      this.currentSrsItem = this.createFallbackSrsItem(letter, word, position);
+      return this.currentSrsItem;
+    } catch (err) {
+      console.error('Error getting/creating SRS item:', err);
+      
+      // Fallback: create a temporary item
+      const position = positionOverride !== null ? positionOverride : this.blankPosition;
+      this.currentSrsItem = this.createFallbackSrsItem(this.correctAnswer, this.currentWord, position);
+      return this.currentSrsItem;
+    }
+  }
+
+  async submitRating(quality) {
+    try {
+      if (!this.currentSrsItem) {
+        console.error('No current SRS item to rate');
+        return;
+      }
+      
+      // If the user got it wrong but rates it as "Easy", adjust to "Hard" at most
+      // This prevents gaming the system
+      let adjustedQuality = quality;
+      if (!this.userWasCorrect && quality > this.MAX_QUALITY_FOR_INCORRECT_ANSWER) {
+        adjustedQuality = this.MAX_QUALITY_FOR_INCORRECT_ANSWER; // Cap at "Hard" if answered incorrectly
+      }
+      
+      // Calculate response time
+      const responseTime = this.answerStartTime ? Date.now() - this.answerStartTime : null;
+      
+      // Submit review to server
+      const response = await fetch('/api/review', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          itemId: this.currentSrsItem.id,
+          quality: adjustedQuality,
+          responseTime
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Review submitted successfully:', data);
+      }
+      
+      // Hide rating panels
+      this.elements.ratingPanel.style.display = 'none';
+      this.elements.sentenceRatingPanel.style.display = 'none';
+      
+      // Move to next word
+      this.currentWordIndex++;
+      this.showNextWord();
+      
+    } catch (err) {
+      console.error('Error submitting rating:', err);
+      // Even if there's an error, move to next word to not block user
+      this.elements.ratingPanel.style.display = 'none';
+      this.elements.sentenceRatingPanel.style.display = 'none';
+      this.currentWordIndex++;
+      this.showNextWord();
+    }
+  }
+
+  async loadSrsStats() {
+    try {
+      const response = await fetch('/api/srs-stats');
+      const stats = await response.json();
+      
+      // Update SRS statistics display
+      if (this.elements.srsNew) {
+        this.elements.srsNew.textContent = stats.new || 0;
+      }
+      if (this.elements.srsLearning) {
+        this.elements.srsLearning.textContent = stats.learning || 0;
+      }
+      if (this.elements.srsYoung) {
+        this.elements.srsYoung.textContent = stats.young || 0;
+      }
+      if (this.elements.srsMature) {
+        this.elements.srsMature.textContent = stats.mature || 0;
+      }
+    } catch (err) {
+      console.error('Error loading SRS stats:', err);
+    }
   }
 }
 
