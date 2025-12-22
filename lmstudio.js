@@ -39,7 +39,11 @@ class LMStudioClient {
           try {
             if (res.statusCode === 200) {
               const response = JSON.parse(data);
-              resolve(response.choices[0].text.trim());
+              if (response.choices && response.choices.length > 0 && response.choices[0].text) {
+                resolve(response.choices[0].text.trim());
+              } else {
+                reject(new Error('Invalid response structure from LM Studio'));
+              }
             } else {
               reject(new Error(`LM Studio returned status ${res.statusCode}`));
             }

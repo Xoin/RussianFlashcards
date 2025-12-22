@@ -6,7 +6,9 @@ class Database {
     this.dbPath = dbPath;
     this.data = {
       letterMistakes: [],
-      userProgress: []
+      userProgress: [],
+      nextMistakeId: 1,
+      nextProgressId: 1
     };
   }
 
@@ -16,6 +18,13 @@ class Database {
       if (fileExists) {
         const content = await fs.readFile(this.dbPath, 'utf-8');
         this.data = JSON.parse(content);
+        // Ensure ID counters exist for backwards compatibility
+        if (!this.data.nextMistakeId) {
+          this.data.nextMistakeId = Math.max(0, ...this.data.letterMistakes.map(m => m.id)) + 1;
+        }
+        if (!this.data.nextProgressId) {
+          this.data.nextProgressId = Math.max(0, ...this.data.userProgress.map(p => p.id)) + 1;
+        }
       } else {
         await this.save();
       }
@@ -31,7 +40,7 @@ class Database {
 
   async recordMistake(letter, word, position) {
     this.data.letterMistakes.push({
-      id: this.data.letterMistakes.length + 1,
+      id: this.data.nextMistakeId++,
       letter,
       word,
       position,
@@ -81,7 +90,7 @@ class Database {
 
   async updateProgress(correct, incorrect) {
     this.data.userProgress.push({
-      id: this.data.userProgress.length + 1,
+      id: this.data.nextProgressId++,
       sessionDate: new Date().toISOString(),
       totalQuestions: correct + incorrect,
       correctAnswers: correct,

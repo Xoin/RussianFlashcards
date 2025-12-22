@@ -62,6 +62,16 @@ const server = http.createServer(async (req, res) => {
     req.on('end', async () => {
       try {
         const data = JSON.parse(body);
+        
+        // Validate required fields
+        if (!data.letter || typeof data.letter !== 'string' ||
+            !data.word || typeof data.word !== 'string' ||
+            typeof data.position !== 'number' || data.position < 0) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid request data' }));
+          return;
+        }
+        
         await db.recordMistake(data.letter, data.word, data.position);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
@@ -83,6 +93,15 @@ const server = http.createServer(async (req, res) => {
     req.on('end', async () => {
       try {
         const data = JSON.parse(body);
+        
+        // Validate progress data
+        if (typeof data.correct !== 'number' || data.correct < 0 ||
+            typeof data.incorrect !== 'number' || data.incorrect < 0) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid progress data' }));
+          return;
+        }
+        
         await db.updateProgress(data.correct, data.incorrect);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
