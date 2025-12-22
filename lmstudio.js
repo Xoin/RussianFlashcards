@@ -146,6 +146,69 @@ class LMStudioClient {
       return 12; // Very low error rate: 12 words
     }
   }
+
+  async generateContextualSentence(word, difficulty = 'beginner') {
+    const levelMap = {
+      'beginner': 'A1-A2',
+      'intermediate': 'B1-B2',
+      'advanced': 'C1-C2'
+    };
+    const level = levelMap[difficulty] || 'A1-A2';
+
+    const prompt = `Create a simple Russian sentence using the word "${word}".
+The sentence should be appropriate for ${level} level learners.
+Format your response exactly as:
+Russian: [sentence]
+English: [translation]`;
+
+    try {
+      const response = await this.generateCompletion(prompt, 150);
+      return this.parseGeneratedSentence(response, word);
+    } catch (err) {
+      console.log('LM Studio unavailable for sentence generation:', err.message);
+      return null;
+    }
+  }
+
+  parseGeneratedSentence(response, word) {
+    try {
+      const lines = response.split('\n').filter(l => l.trim());
+      
+      let russian = '';
+      let english = '';
+      
+      for (const line of lines) {
+        if (line.toLowerCase().includes('russian:')) {
+          russian = line.split(':').slice(1).join(':').trim();
+        } else if (line.toLowerCase().includes('english:')) {
+          english = line.split(':').slice(1).join(':').trim();
+        }
+      }
+      
+      if (!russian || !english) {
+        return null;
+      }
+      
+      // Find target word position in sentence
+      const words = russian.toLowerCase().split(' ');
+      const targetPosition = words.findIndex(w => 
+        w.includes(word.toLowerCase()) || word.toLowerCase().includes(w)
+      );
+      
+      if (targetPosition === -1) {
+        return null;
+      }
+      
+      return {
+        sentence: russian,
+        translation: english,
+        targetPosition
+      };
+    } catch (err) {
+      console.error('Error parsing generated sentence:', err);
+      return null;
+    }
+  }
 }
 
 module.exports = LMStudioClient;
