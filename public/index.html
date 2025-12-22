@@ -86,6 +86,40 @@
                 <div id="russian-keyboard" class="russian-keyboard"></div>
 
                 <div id="feedback" class="feedback"></div>
+                
+                <!-- Context panel (shown after completing an exercise) -->
+                <div id="context-panel" class="context-panel" style="display: none;">
+                    <h3>Context & Meaning</h3>
+                    <div class="word-info">
+                        <span id="context-word" class="russian-word"></span>
+                        <span id="context-translation" class="translation"></span>
+                    </div>
+                    <div id="example-sentences"></div>
+                    <button id="show-more-btn" class="show-more" style="display: none;">Show more examples</button>
+                </div>
+            </div>
+
+            <!-- Sentence completion exercise -->
+            <div id="sentence-exercise" class="sentence-exercise" style="display: none;">
+                <p class="instruction">Fill in the missing word:</p>
+                <p id="sentence-prompt" class="sentence-prompt"></p>
+                <p id="sentence-translation" class="translation"></p>
+                <input type="text" id="sentence-input" placeholder="Type the word..." autocomplete="off">
+                <div>
+                    <button id="sentence-submit-btn" class="btn btn-primary">Submit</button>
+                    <button id="sentence-hint-btn" class="btn btn-secondary">Show Hint</button>
+                </div>
+                <div id="sentence-feedback" class="feedback"></div>
+                
+                <!-- Context panel for sentence exercise -->
+                <div id="sentence-context-panel" class="context-panel" style="display: none;">
+                    <h3>Context & Meaning</h3>
+                    <div class="word-info">
+                        <span id="sentence-context-word" class="russian-word"></span>
+                        <span id="sentence-context-translation" class="translation"></span>
+                    </div>
+                    <div id="sentence-example-sentences"></div>
+                </div>
             </div>
 
             <div id="lesson-complete" class="lesson-complete" style="display: none;">
@@ -108,6 +142,19 @@
         <footer>
             <p>Focus areas are automatically adjusted based on your performance</p>
         </footer>
+    </div>
+
+    <!-- Word details modal -->
+    <div id="modal-overlay" class="modal-overlay"></div>
+    <div id="word-details-modal" class="word-details-modal">
+        <h2 id="modal-word"></h2>
+        <div class="definition">
+            <span id="modal-translation" class="translation"></span>
+            <span id="modal-pos" class="pos"></span>
+        </div>
+        <h3>Example Sentences</h3>
+        <ul id="modal-sentence-list" class="sentence-list"></ul>
+        <button id="close-modal-btn" class="close-modal">Close</button>
     </div>
 
     <script src="app.js"></script>
