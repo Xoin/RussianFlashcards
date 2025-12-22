@@ -271,8 +271,9 @@ class FlashcardApp {
     
     // Autoplay audio if enabled
     if (this.audioSettings.autoplay && this.audioSettings.enabled) {
-      // Small delay to ensure the word is rendered
-      setTimeout(() => this.speakWord(this.currentWord), 300);
+      // Small delay to ensure the word is rendered and user can focus on listening
+      const AUTOPLAY_DELAY_MS = 300;
+      setTimeout(() => this.speakWord(this.currentWord), AUTOPLAY_DELAY_MS);
     }
   }
 
