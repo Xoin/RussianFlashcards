@@ -64,6 +64,27 @@ If LM Studio is not available, the application will use a built-in set of Russia
 
 User progress and mistakes are stored in `flashcards.json` in the project directory. This file is automatically created on first run.
 
+## Research and Future Enhancements
+
+This project is backed by comprehensive research on language acquisition and cognitive science. We've researched:
+
+- Spaced repetition algorithms (SM-2, FSRS)
+- Retrieval practice and flashcard effectiveness
+- Russian language acquisition pedagogy
+- Cyrillic alphabet learning challenges
+- Contextual learning and word frequency optimization
+
+**See our research documentation:**
+- 📚 [Research Summary](docs/RESEARCH_SUMMARY.md) - Quick overview of findings and recommendations
+- 📖 [Full Research Document](docs/language-learning-research.md) - Comprehensive research with citations
+- 💡 [Proposed Features](docs/proposed-issues/) - Detailed specifications for planned enhancements
+
+**Key recommendations from research:**
+1. **SM-2 Spaced Repetition** - 30-50% better retention
+2. **Audio Pronunciation** - Critical for Cyrillic letter-sound mapping
+3. **Contextual Learning** - 40-60% improvement with example sentences
+4. **Word Frequency** - Faster path to practical communication
+
 ## License
 
 MIT
