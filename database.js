@@ -108,6 +108,31 @@ class Database {
     await fs.writeFile(this.dbPath, JSON.stringify(this.data, null, 2), 'utf-8');
   }
 
+  /**
+   * Check if initial data migrations are needed
+   * Returns an object with migration status and warnings
+   */
+  checkMigrationStatus() {
+    const status = {
+      needsMigration: false,
+      warnings: []
+    };
+
+    // Check if word definitions are loaded
+    if (!this.data.wordDefinitions || this.data.wordDefinitions.length === 0) {
+      status.needsMigration = true;
+      status.warnings.push('⚠️  No word definitions found. Run: node migrate.js');
+    }
+
+    // Check if frequency words are loaded
+    if (!this.data.frequencyWords || this.data.frequencyWords.length === 0) {
+      status.needsMigration = true;
+      status.warnings.push('⚠️  No frequency words found. Run: node migrate-frequency.js');
+    }
+
+    return status;
+  }
+
   async recordMistake(letter, word, position) {
     this.data.letterMistakes.push({
       id: this.data.nextMistakeId++,

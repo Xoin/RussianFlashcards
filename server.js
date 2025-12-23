@@ -29,6 +29,17 @@ async function startServer() {
     await db.init();
     console.log('Database initialized successfully');
     
+    // Check migration status and display warnings
+    const migrationStatus = db.checkMigrationStatus();
+    if (migrationStatus.needsMigration) {
+      console.log('\n⚠️  WARNING: Initial data not loaded');
+      console.log('═══════════════════════════════════════════════════════');
+      migrationStatus.warnings.forEach(warning => console.log(warning));
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('The application will work, but vocabulary tracking and');
+      console.log('contextual learning features will be limited.\n');
+    }
+    
     // Load LM Studio settings from database
     const settings = await db.getSettings();
     if (settings.lmstudio) {
