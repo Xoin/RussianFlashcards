@@ -103,6 +103,19 @@ cd Flashcards
 
 2. No npm install needed - the project uses only built-in Node.js modules!
 
+3. **IMPORTANT - Load Initial Data** (Required for full functionality):
+```bash
+node migrate.js
+node migrate-frequency.js
+```
+
+This will import:
+- 58 word definitions with translations and grammatical information
+- 171 example sentences to provide contextual learning
+- 989 frequency-ranked words with CEFR level classifications
+
+**Note**: These migrations are **required** for vocabulary tracking, contextual learning, and CEFR level progression features to work properly. The application will still run without them, but with limited functionality.
+
 ## Running the Application
 
 1. Start the server:
@@ -117,23 +130,7 @@ http://localhost:3000
 
 3. Start learning Russian!
 
-### First Time Setup
-
-If this is your first time running the application, you should load the initial content database:
-
-```bash
-node migrate.js
-node migrate-frequency.js
-```
-
-This will import:
-- 58 word definitions with translations and grammatical information
-- 171 example sentences to provide contextual learning
-- 989 frequency-ranked words with CEFR level classifications
-
-The migration scripts will only run once - they skip if data already exists.
-
-**Note**: The frequency data is essential for the word frequency-based selection feature. Running `migrate-frequency.js` will load approximately 1,000 words ranked by frequency and tagged with CEFR levels.
+**First-time users**: If you see a warning about missing initial data when starting the server, stop the server (Ctrl+C) and run the migration commands above.
 
 ## Optional: LM Studio Integration
 
@@ -194,14 +191,18 @@ To access audio settings:
 
 User progress, mistakes, SRS items, word definitions, example sentences, and frequency data are stored in `flashcards.json` in the project directory. This file is automatically created on first run and includes:
 
-- Letter mistakes tracking (legacy)
-- SRS items with individual review schedules
-- User progress statistics  
-- Audio settings preferences
-- Word definitions database
-- Example sentences database
-- Frequency-ranked words with CEFR levels
-- User level tracking and progression
+- **Letter mistakes tracking**: Records which letters you struggle with most
+- **SRS items**: Individual review schedules for each letter-word-position combination
+- **User progress statistics**: Session-by-session tracking of correct/incorrect answers
+- **Audio settings preferences**: Your preferred audio settings
+- **Word definitions database**: Translations and grammatical information (loaded via `migrate.js`)
+- **Example sentences database**: Contextual examples for words (loaded via `migrate.js`)
+- **Frequency-ranked words**: ~1,000 words with CEFR levels (loaded via `migrate-frequency.js`)
+- **User level tracking**: Your current CEFR level and vocabulary progress
+
+**Progress Persistence**: All progress is automatically saved to `flashcards.json` after each action (answering a question, completing a lesson, changing settings). Your progress will persist across browser refreshes and server restarts.
+
+**Backup Recommendation**: Consider backing up `flashcards.json` periodically to preserve your learning progress.
 
 ## API Endpoints
 
